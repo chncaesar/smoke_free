@@ -1,0 +1,21 @@
+# Xcode
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+
+# Swift Package Manager
+.build/
+Packages/
+
+# macOS
+.DS_Store
+
+# Xcode Playgrounds
+*.playground
