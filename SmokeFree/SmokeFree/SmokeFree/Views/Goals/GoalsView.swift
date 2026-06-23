@@ -5,6 +5,7 @@ struct GoalsView: View {
     @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
     @Query private var goals: [Goal]
     @Query private var profiles: [UserProfile]
+    @Query(sort: \PurchaseRecord.date, order: .reverse) private var purchases: [PurchaseRecord]
     @Environment(\.modelContext) private var context
     @State private var vm = GoalsViewModel()
 
@@ -28,7 +29,7 @@ struct GoalsView: View {
                 if !active.isEmpty {
                     Section("进行中") {
                         ForEach(active) { goal in
-                            GoalRowView(goal: goal, profile: profile, logs: Array(logs))
+                            GoalRowView(goal: goal, profile: profile, logs: Array(logs), purchases: Array(purchases))
                                 .contentShape(Rectangle())
                                 .onTapGesture { vm.startEditing(goal) }
                         }
@@ -41,7 +42,7 @@ struct GoalsView: View {
                 if !completed.isEmpty {
                     Section("已完成") {
                         ForEach(completed) { goal in
-                            GoalRowView(goal: goal, profile: profile, logs: Array(logs))
+                            GoalRowView(goal: goal, profile: profile, logs: Array(logs), purchases: Array(purchases))
                         }
                     }
                 }
@@ -75,7 +76,7 @@ struct GoalsView: View {
         vm.checkCompletion(
             goals: goals,
             streakDays: profile.actualStreakDays(logs: Array(logs)),
-            moneySaved: profile.moneySaved(logs: Array(logs))
+            moneySaved: profile.moneySaved(logs: Array(logs), purchases: Array(purchases))
         )
         vm.hasActiveMoneyGoal = goals.contains { !$0.isCompleted && $0.targetMoneySaved != nil }
     }
@@ -87,11 +88,13 @@ private struct GoalRowView: View {
     let goal: Goal
     let profile: UserProfile?
     let logs: [SmokingLog]
+    let purchases: [PurchaseRecord]
 
     var progressValue: Double {
         guard let profile, !goal.isCompleted else { return goal.isCompleted ? 1.0 : 0.0 }
         if let moneyTarget = goal.targetMoneySaved {
-            return min(profile.moneySaved(logs: logs) / moneyTarget, 1.0)
+            let saved = profile.moneySaved(logs: logs, purchases: purchases)
+            return max(0, min(saved / moneyTarget, 1.0))
         }
         let streak = profile.actualStreakDays(logs: logs)
         return min(Double(streak) / Double(goal.targetDays), 1.0)
@@ -126,7 +129,8 @@ private struct GoalRowView: View {
                 }
                 if !goal.isCompleted, let profile {
                     if let moneyTarget = goal.targetMoneySaved {
-                        Text("¥\(String(format: "%.0f", profile.moneySaved(logs: logs))) / ¥\(String(format: "%.0f", moneyTarget))")
+                        let saved = profile.moneySaved(logs: logs, purchases: purchases)
+                        Text("\(saved < 0 ? "-" : "")¥\(String(format: "%.0f", abs(saved))) / ¥\(String(format: "%.0f", moneyTarget))")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     } else {

@@ -9,10 +9,10 @@ final class DashboardViewModel {
     private(set) var nextMilestoneProgress: Double = 0
     private(set) var nextMilestoneTimeRemaining: String = ""
 
-    func update(from profile: UserProfile, logs: [SmokingLog]) {
+    func update(from profile: UserProfile, logs: [SmokingLog], purchases: [PurchaseRecord] = []) {
         let prevStreakDays = streakDays
         streakDays = profile.actualStreakDays(logs: logs)
-        moneySaved = profile.moneySaved(logs: logs)
+        moneySaved = profile.moneySaved(logs: logs, purchases: purchases)
 
         let milestones = AppConfig.healthMilestones
 
@@ -51,17 +51,17 @@ final class DashboardViewModel {
     private(set) var reductionPercent: Double = 0
     private(set) var todaySavings: Double = 0
 
-    func updateReduction(todayLog: SmokingLog?, profile: UserProfile) {
+    func updateReduction(todayLog: SmokingLog?, profile: UserProfile, purchases: [PurchaseRecord] = [], logs: [SmokingLog] = []) {
         baselineCount = profile.cigarettesPerDayBefore
         todayCount = todayLog?.count ?? -1
-        guard baselineCount > 0, todayCount >= 0, profile.cigarettesPerPack > 0 else {
+        guard baselineCount > 0, todayCount >= 0 else {
             reductionPercent = 0
             todaySavings = 0
             return
         }
         let reduced = max(0, baselineCount - todayCount)
         reductionPercent = Double(reduced) / Double(baselineCount)
-        let pricePerCig = profile.pricePerPack / Double(profile.cigarettesPerPack)
+        let pricePerCig = effectivePricePerCig(purchases: purchases, logs: logs, profile: profile)
         todaySavings = Double(reduced) * pricePerCig
     }
 
@@ -71,11 +71,11 @@ final class DashboardViewModel {
     private(set) var yearsToGoal: Double = 0
     private(set) var totalSpentOnSmokes: Double = 0
 
-    func updateCost(profile: UserProfile, logs: [SmokingLog]) {
-        guard profile.cigarettesPerPack > 0 else {
+    func updateCost(profile: UserProfile, logs: [SmokingLog], purchases: [PurchaseRecord] = []) {
+        let pricePerCig = effectivePricePerCig(purchases: purchases, logs: logs, profile: profile)
+        guard pricePerCig > 0 else {
             annualBaselineCost = 0; yearsToGoal = 0; totalSpentOnSmokes = 0; return
         }
-        let pricePerCig = profile.pricePerPack / Double(profile.cigarettesPerPack)
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
         let recentLogs = logs.filter { $0.date >= Calendar.current.startOfDay(for: cutoff) }
         let currentDailyAvg: Double
@@ -88,10 +88,27 @@ final class DashboardViewModel {
         guard annualBaselineCost > 0 else { yearsToGoal = 0; totalSpentOnSmokes = 0; return }
         yearsToGoal = profile.goalAmount / annualBaselineCost
         totalSpentOnSmokes = logs.reduce(0.0) { sum, log in
-            let price   = log.pricePerPackAtTime    ?? profile.pricePerPack
+            let price = log.pricePerPackAtTime ?? profile.pricePerPack
             let perPack = max(1, log.cigarettesPerPackAtTime ?? profile.cigarettesPerPack)
             return sum + Double(log.count) * (price / Double(perPack))
         }
+    }
+
+    /// 当前有效的每支烟价格：最近购烟未消耗完则用购入价，否则回落个人资料价格
+    func effectivePricePerCig(purchases: [PurchaseRecord], logs: [SmokingLog], profile: UserProfile) -> Double {
+        guard let latest = purchases.max(by: { $0.date < $1.date }) else {
+            return profile.pricePerPack / Double(max(1, profile.cigarettesPerPack))
+        }
+        let cal = Calendar.current
+        let purchaseDay = cal.startOfDay(for: latest.date)
+        let totalBought = latest.quantity * 20
+        let smokedSince = logs
+            .filter { $0.date >= purchaseDay }
+            .reduce(0) { $0 + $1.count }
+        if smokedSince < totalBought {
+            return latest.pricePerPack / 20.0
+        }
+        return profile.pricePerPack / Double(max(1, profile.cigarettesPerPack))
     }
 
     func formattedYearsToGoal() -> String {

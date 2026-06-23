@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct DashboardView: View {
     @Query private var profiles: [UserProfile]
     @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
+    @Query(sort: \PurchaseRecord.date, order: .reverse) private var purchases: [PurchaseRecord]
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @State private var vm = DashboardViewModel()
@@ -16,6 +18,8 @@ struct DashboardView: View {
 
     @State private var showEditBaseline = false
     @State private var showEditGoalSheet = false
+    @State private var showShareSheet = false
+    @State private var exportDirURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -56,8 +60,13 @@ struct DashboardView: View {
             .navigationTitle("首页")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showEditBaseline = true } label: {
-                        Image(systemName: "slider.horizontal.3")
+                    HStack(spacing: 12) {
+                        Button { exportData() } label: {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button { showEditBaseline = true } label: {
+                            Image(systemName: "slider.horizontal.3")
+                        }
                     }
                 }
             }
@@ -73,6 +82,11 @@ struct DashboardView: View {
                     EditGoalView(profile: profile) { updateVM() }
                 }
             }
+            .sheet(isPresented: $showShareSheet) {
+                if let url = exportDirURL {
+                    ShareSheet(items: [url])
+                }
+            }
             .onAppear { updateVM() }
             .onChange(of: logs) { updateVM() }
             .onChange(of: scenePhase) { _, newPhase in
@@ -83,12 +97,21 @@ struct DashboardView: View {
 
     private func updateVM() {
         guard let profile else { return }
-        vm.update(from: profile, logs: Array(logs))
-        vm.updateReduction(todayLog: todayLog, profile: profile)
-        vm.updateCost(profile: profile, logs: Array(logs))
+        vm.update(from: profile, logs: Array(logs), purchases: Array(purchases))
+        vm.updateReduction(todayLog: todayLog, profile: profile, purchases: Array(purchases), logs: Array(logs))
+        vm.updateCost(profile: profile, logs: Array(logs), purchases: Array(purchases))
         AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
         if vm.todayCount == 0 {
             Task { await HealthKitService.shared.recordSmokeFreeToday() }
+        }
+    }
+
+    private func exportData() {
+        do {
+            exportDirURL = try DataExportService.exportData(context: context)
+            showShareSheet = true
+        } catch {
+            exportDirURL = nil
         }
     }
 }
@@ -387,4 +410,12 @@ private struct HealthStatusCardView: View {
             }
         }
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
