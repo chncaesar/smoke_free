@@ -1,11 +1,11 @@
 import SwiftUI
 import SwiftData
-import Combine
 
 struct DashboardView: View {
     @Query private var profiles: [UserProfile]
     @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @State private var vm = DashboardViewModel()
 
     private var profile: UserProfile? { profiles.first }
@@ -22,18 +22,22 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     if let profile {
-                        // 连续天数卡片
                         StreakCardView(streakDays: vm.streakDays)
 
-                        // 今日减量进度卡片
                         ReductionProgressCard(vm: vm)
 
-                        // 节省金额卡片
                         MoneySavedCardView(
                             moneySaved: vm.formattedMoneySaved(currencyCode: profile.currencyCode)
                         )
 
-                        // 烟草开销对比卡片
+                        if let milestone = vm.nextMilestone {
+                            HealthStatusCardView(
+                                milestone: milestone,
+                                progress: vm.nextMilestoneProgress,
+                                timeRemaining: vm.nextMilestoneTimeRemaining
+                            )
+                        }
+
                         SmokingCostCard(vm: vm, profile: profile) {
                             showEditGoalSheet = true
                         }
@@ -71,8 +75,8 @@ struct DashboardView: View {
             }
             .onAppear { updateVM() }
             .onChange(of: logs) { updateVM() }
-            .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
-                updateVM()
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active { updateVM() }
             }
         }
     }
@@ -83,7 +87,7 @@ struct DashboardView: View {
         vm.updateReduction(todayLog: todayLog, profile: profile)
         vm.updateCost(profile: profile, logs: Array(logs))
         AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
-        if vm.todayCount >= 0 && vm.todayCount < vm.baselineCount {
+        if vm.todayCount == 0 {
             Task { await HealthKitService.shared.recordSmokeFreeToday() }
         }
     }

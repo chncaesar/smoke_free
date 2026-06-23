@@ -7,7 +7,7 @@ final class LoggingViewModel {
     var notes: String = ""
     var hasLoggedToday: Bool = false
 
-    private var todayLog: SmokingLog?
+    private(set) var todayLog: SmokingLog?
 
     func load(from logs: [SmokingLog]) {
         let today = Calendar.current.startOfDay(for: Date())

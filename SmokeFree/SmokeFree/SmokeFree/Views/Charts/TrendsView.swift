@@ -12,7 +12,15 @@ struct TrendsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            if logs.isEmpty && purchases.isEmpty {
+                ContentUnavailableView(
+                    "还没有记录数据",
+                    systemImage: "chart.bar.xaxis",
+                    description: Text("记录每日吸烟量和购烟支出后，这里会显示趋势图表")
+                )
+                .padding(.top, 80)
+            } else {
+                VStack(spacing: 20) {
                 Picker("时间范围", selection: Binding(
                     get: { vm.selectedWindow },
                     set: { vm.selectedWindow = $0; vm.load(logs: logs, purchases: purchases) }
@@ -100,8 +108,9 @@ struct TrendsView: View {
                 .padding(.vertical, 12)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                 .padding(.horizontal)
+                }
+                .padding(.vertical)
             }
-            .padding(.vertical)
         }
         .navigationTitle("趋势")
         .onAppear { vm.load(logs: logs, purchases: purchases, baseline: baseline) }

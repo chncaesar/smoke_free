@@ -23,8 +23,12 @@ struct LoggingView: View {
                     DailyLogEntryView(vm: vm, feedbackText: feedbackText, onSave: {
                         vm.save(context: context, profile: profiles.first)
                         if let profile = profiles.first {
+                            var allLogs = logs.map { $0 }
+                            if let today = vm.todayLog, !allLogs.contains(where: { $0.id == today.id }) {
+                                allLogs.append(today)
+                            }
                             AchievementService.evaluateAndAward(
-                                profile: profile, logs: Array(logs), context: context)
+                                profile: profile, logs: allLogs, context: context)
                         }
                         withAnimation {
                             feedbackText = vm.feedbackMessage(

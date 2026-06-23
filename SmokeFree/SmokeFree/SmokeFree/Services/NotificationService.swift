@@ -30,31 +30,19 @@ struct NotificationService {
 
     // MARK: - 里程碑通知
 
-    /// 根据控烟开始日期，为所有尚未解锁的里程碑安排一次性推送
-    func scheduleMilestoneNotifications(quitDate: Date) {
-        // 先清除旧的里程碑通知
-        let oldIDs = AppConfig.healthMilestones.map { "milestone_\($0.id)" }
-        center.removePendingNotificationRequests(withIdentifiers: oldIDs)
+    /// 里程碑达成时即时推送庆祝通知
+    func sendMilestoneNotification(milestone: HealthMilestone) {
+        let content = UNMutableNotificationContent()
+        content.title = "🎉 控烟里程碑达成！"
+        content.body = "\(milestone.title) — \(milestone.description)"
+        content.sound = .default
 
-        let now = Date()
-        for milestone in AppConfig.healthMilestones {
-            let unlockDate = quitDate.addingTimeInterval(milestone.offsetSeconds)
-            guard unlockDate > now else { continue } // 已解锁，跳过
-
-            let content = UNMutableNotificationContent()
-            content.title = "🎉 健康里程碑解锁！"
-            content.body = "控烟里程碑：\(milestone.title) — \(milestone.description)"
-            content.sound = .default
-
-            let interval = unlockDate.timeIntervalSince(now)
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "milestone_\(milestone.id)",
-                content: content,
-                trigger: trigger
-            )
-            center.add(request)
-        }
+        let request = UNNotificationRequest(
+            identifier: "milestone_\(milestone.id)_\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        center.add(request)
     }
 
     // MARK: - 取消

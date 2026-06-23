@@ -3,6 +3,7 @@ import SwiftData
 
 struct HealthTimelineView: View {
     @Query private var profiles: [UserProfile]
+    @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
     @State private var vm = HealthTimelineViewModel()
 
     var body: some View {
@@ -27,14 +28,19 @@ struct HealthTimelineView: View {
                 MilestoneRowView(item: item)
             }
         }
-        .navigationTitle("健康恢复")
+        .navigationTitle("控烟里程碑")
         .listStyle(.insetGrouped)
         .onAppear { reload() }
+        .onChange(of: logs) { reload() }
     }
 
     private func reload() {
         guard let profile = profiles.first else { return }
-        vm.load(quitDate: profile.quitDate)
+        vm.load(
+            streakDays: profile.actualStreakDays(logs: Array(logs)),
+            profile: profile,
+            logs: Array(logs)
+        )
     }
 }
 
@@ -68,10 +74,12 @@ private struct MilestoneRowView: View {
                     .foregroundStyle(.secondary)
 
                 if item.isUnlocked {
-                    Text("解锁于 \(item.unlockDate.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption2)
-                        .foregroundStyle(.green)
-                } else if let remaining = item.timeRemaining {
+                    if let date = item.unlockDate {
+                        Text("解锁于 \(date.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                } else if let remaining = item.remainingText {
                     Text(remaining)
                         .font(.caption2)
                         .foregroundStyle(.secondary)

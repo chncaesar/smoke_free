@@ -70,9 +70,10 @@ struct AchievementService {
                     break
                 }
             } else {
-                break // 无记录视为中断
+                break
             }
-            checkDate = cal.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
+            guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
+            checkDate = prev
         }
         return count
     }

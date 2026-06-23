@@ -38,7 +38,7 @@ final class UserProfile {
         Date().timeIntervalSince(quitDate)
     }
 
-    /// 基于日历天数的控烟天数（不依赖吸烟记录，用于里程碑时间线计算）
+    /// 基于日历天数的控烟天数（不依赖吸烟记录）
     var streakDays: Int {
         max(0, Int(smokeFreeSeconds / 86400))
     }
@@ -69,9 +69,30 @@ final class UserProfile {
         logs.reduce(0.0) { sum, log in
             let baseline = log.baselineAtTime ?? cigarettesPerDayBefore
             let price = log.pricePerPackAtTime ?? pricePerPack
-            let perPack = log.cigarettesPerPackAtTime ?? cigarettesPerPack
+            let perPack = max(1, log.cigarettesPerPackAtTime ?? cigarettesPerPack)
             let reduced = max(0, baseline - log.count)
             return sum + Double(reduced) * (price / Double(perPack))
         }
+    }
+
+    /// 计算里程碑解锁日期：从今天往前数，streak 第一次达到 requiredDays 的那一天
+    func milestoneUnlockDate(logs: [SmokingLog], requiredDays: Int) -> Date? {
+        let cal = Calendar.current
+        var checkDate = cal.startOfDay(for: Date())
+        let logByDate = Dictionary(uniqueKeysWithValues: logs.map { ($0.date, $0) })
+        var consecutiveBelow = 0
+
+        while checkDate >= cal.startOfDay(for: quitDate) {
+            if let log = logByDate[checkDate] {
+                let baseline = log.baselineAtTime ?? cigarettesPerDayBefore
+                let threshold = baseline > 0 ? baseline : 1
+                if log.count >= threshold { break }
+            }
+            consecutiveBelow += 1
+            if consecutiveBelow >= requiredDays { return checkDate }
+            guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
+            checkDate = prev
+        }
+        return nil
     }
 }

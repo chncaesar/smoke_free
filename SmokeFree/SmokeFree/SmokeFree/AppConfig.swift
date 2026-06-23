@@ -4,7 +4,7 @@ import Foundation
 
 struct HealthMilestone: Identifiable {
     let id: String
-    let offsetSeconds: TimeInterval
+    let requiredStreakDays: Int
     let title: String
     let description: String
     let iconName: String
@@ -50,63 +50,63 @@ enum AppConfig {
     static let healthMilestones: [HealthMilestone] = [
         HealthMilestone(
             id: "day1",
-            offsetSeconds: 86_400,
+            requiredStreakDays: 1,
             title: "控烟第一天",
             description: "迈出第一步，改变从今天开始。",
             iconName: "flag.fill"
         ),
         HealthMilestone(
             id: "3days",
-            offsetSeconds: 259_200,
+            requiredStreakDays: 3,
             title: "坚持三天",
             description: "烟瘾高峰期已过，最难的阶段正在结束。",
             iconName: "bolt.heart"
         ),
         HealthMilestone(
             id: "1week",
-            offsetSeconds: 604_800,
+            requiredStreakDays: 7,
             title: "一周控烟",
             description: "坚持一周！烟瘾开始减弱，身体逐渐适应。",
             iconName: "7.circle.fill"
         ),
         HealthMilestone(
             id: "2weeks",
-            offsetSeconds: 1_209_600,
+            requiredStreakDays: 14,
             title: "两周里程碑",
             description: "吸烟冲动明显减少，睡眠质量开始改善。",
             iconName: "moon.stars.fill"
         ),
         HealthMilestone(
             id: "1month",
-            offsetSeconds: 2_592_000,
+            requiredStreakDays: 30,
             title: "一个月突破",
             description: "持续控烟一个月，已逐渐形成新的行为习惯。",
             iconName: "calendar"
         ),
         HealthMilestone(
             id: "2months",
-            offsetSeconds: 5_184_000,
+            requiredStreakDays: 60,
             title: "两个月坚持",
             description: "呼吸更顺畅，运动耐力开始提升。",
             iconName: "lungs.fill"
         ),
         HealthMilestone(
             id: "3months",
-            offsetSeconds: 7_776_000,
+            requiredStreakDays: 90,
             title: "三个月荣耀",
             description: "季度控烟成功！肺功能显著改善，精力更充沛。",
             iconName: "trophy.fill"
         ),
         HealthMilestone(
             id: "6months",
-            offsetSeconds: 15_552_000,
+            requiredStreakDays: 180,
             title: "半年里程碑",
             description: "半年控烟成果斐然，心血管健康持续改善。",
             iconName: "heart.circle.fill"
         ),
         HealthMilestone(
             id: "1year",
-            offsetSeconds: 31_536_000,
+            requiredStreakDays: 365,
             title: "年度成就",
             description: "坚持控烟整整一年，你的身体感谢你的坚持！",
             iconName: "star.fill"

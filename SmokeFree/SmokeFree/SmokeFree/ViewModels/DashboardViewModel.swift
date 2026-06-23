@@ -1,5 +1,4 @@
 import Foundation
-import SwiftData
 import WidgetKit
 
 @Observable
@@ -11,45 +10,51 @@ final class DashboardViewModel {
     private(set) var nextMilestoneTimeRemaining: String = ""
 
     func update(from profile: UserProfile, logs: [SmokingLog]) {
+        let prevStreakDays = streakDays
         streakDays = profile.actualStreakDays(logs: logs)
         moneySaved = profile.moneySaved(logs: logs)
 
-        let elapsed = profile.smokeFreeSeconds
         let milestones = AppConfig.healthMilestones
 
-        // 找到下一个未解锁的里程碑
-        let next = milestones.first { $0.offsetSeconds > elapsed }
+        let next = milestones.first { $0.requiredStreakDays > streakDays }
         nextMilestone = next
 
         if let next = next {
-            // 找当前区间的起点（上一个里程碑的时间，或 0）
-            let prev = milestones.last { $0.offsetSeconds <= elapsed }
-            let start = prev?.offsetSeconds ?? 0
-            let span = next.offsetSeconds - start
-            let progress = (elapsed - start) / span
+            let prevRequired = milestones.last { $0.requiredStreakDays <= streakDays }
+            let start = prevRequired?.requiredStreakDays ?? 0
+            let span = next.requiredStreakDays - start
+            let progress = span > 0 ? Double(streakDays - start) / Double(span) : 0
             nextMilestoneProgress = min(max(progress, 0), 1)
-            nextMilestoneTimeRemaining = formatTimeRemaining(next.offsetSeconds - elapsed)
+            let remaining = next.requiredStreakDays - streakDays
+            nextMilestoneTimeRemaining = "还需 \(remaining) 天连续控烟"
         } else {
             nextMilestoneProgress = 1.0
             nextMilestoneTimeRemaining = ""
         }
 
         writeWidgetData(profile: profile)
-    }
 
-    // MARK: - Widget 数据桥接
+        if streakDays > prevStreakDays {
+            let newlyUnlocked = milestones.filter {
+                $0.requiredStreakDays > prevStreakDays && $0.requiredStreakDays <= streakDays
+            }
+            for milestone in newlyUnlocked {
+                NotificationService.shared.sendMilestoneNotification(milestone: milestone)
+            }
+        }
+    }
 
     // MARK: - 减量进度
 
-    private(set) var todayCount: Int = -1        // -1 表示今天尚未记录
+    private(set) var todayCount: Int = -1
     private(set) var baselineCount: Int = 0
-    private(set) var reductionPercent: Double = 0 // 0~1
-    private(set) var todaySavings: Double = 0     // 今日少抽换算的金额
+    private(set) var reductionPercent: Double = 0
+    private(set) var todaySavings: Double = 0
 
     func updateReduction(todayLog: SmokingLog?, profile: UserProfile) {
         baselineCount = profile.cigarettesPerDayBefore
         todayCount = todayLog?.count ?? -1
-        guard baselineCount > 0, todayCount >= 0 else {
+        guard baselineCount > 0, todayCount >= 0, profile.cigarettesPerPack > 0 else {
             reductionPercent = 0
             todaySavings = 0
             return
@@ -121,18 +126,6 @@ final class DashboardViewModel {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    private func formatTimeRemaining(_ seconds: TimeInterval) -> String {
-        let s = max(0, Int(seconds))
-        if s < 3600 {
-            return "\(s / 60) 分钟后"
-        } else if s < 86400 {
-            return "\(s / 3600) 小时后"
-        } else {
-            return "\(s / 86400) 天后"
-        }
-    }
-
-    /// 格式化节省金额
     func formattedMoneySaved(currencyCode: String) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency

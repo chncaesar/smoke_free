@@ -23,7 +23,6 @@ struct OnboardingContainerView: View {
                 case 3: NotificationsPermissionView(vm: vm, onFinish: {
                     vm.finish(context: context)
                     NotificationService.shared.scheduleDailyReminder()
-                    NotificationService.shared.scheduleMilestoneNotifications(quitDate: vm.quitDate)
                     Task { try? await HealthKitService.shared.requestAuthorization() }
                     onboardingComplete = true
                 })
