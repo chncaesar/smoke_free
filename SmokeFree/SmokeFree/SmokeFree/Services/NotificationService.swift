@@ -1,27 +1,46 @@
 import Foundation
 import UserNotifications
 
-/// 通知服务：每日提醒 + 健康里程碑庆祝推送
 struct NotificationService {
     static let shared = NotificationService()
     private let center = UNUserNotificationCenter.current()
+    private static let reminderID = "daily_reminder"
 
-    // MARK: - 每日提醒
+    // MARK: - 每日提醒（单次，非重复）
 
-    /// 安排每天 21:00 的记录提醒（重复触发）
     func scheduleDailyReminder() {
+        center.removePendingNotificationRequests(withIdentifiers: [Self.reminderID])
+        scheduleReminder(for: Date())
+    }
+
+    func cancelTodayReminderAndRescheduleTomorrow() {
+        center.removePendingNotificationRequests(withIdentifiers: [Self.reminderID])
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) else { return }
+        scheduleReminder(for: tomorrow)
+    }
+
+    func ensureTodayReminderIfNeeded(hasLoggedToday: Bool) {
+        guard !hasLoggedToday else { return }
+        center.getPendingNotificationRequests { requests in
+            if !requests.contains(where: { $0.identifier == Self.reminderID }) {
+                scheduleReminder(for: Date())
+            }
+        }
+    }
+
+    private func scheduleReminder(for date: Date) {
         let content = UNMutableNotificationContent()
         content.title = "记录今天的情况"
         content.body = "别忘了记录今天的烟量，坚持就是胜利！"
         content.sound = .default
 
-        var components = DateComponents()
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: date)
         components.hour = 21
         components.minute = 0
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
         let request = UNNotificationRequest(
-            identifier: "daily_reminder",
+            identifier: Self.reminderID,
             content: content,
             trigger: trigger
         )
@@ -30,7 +49,6 @@ struct NotificationService {
 
     // MARK: - 里程碑通知
 
-    /// 里程碑达成时即时推送庆祝通知
     func sendMilestoneNotification(milestone: HealthMilestone) {
         let content = UNMutableNotificationContent()
         content.title = "🎉 控烟里程碑达成！"

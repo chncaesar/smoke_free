@@ -90,7 +90,10 @@ struct DashboardView: View {
             .onAppear { updateVM() }
             .onChange(of: logs) { updateVM() }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active { updateVM() }
+                if newPhase == .active {
+                    updateVM()
+                    NotificationService.shared.ensureTodayReminderIfNeeded(hasLoggedToday: todayLog != nil)
+                }
             }
         }
     }

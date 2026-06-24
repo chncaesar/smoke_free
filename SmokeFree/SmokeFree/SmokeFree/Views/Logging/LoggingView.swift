@@ -30,6 +30,7 @@ struct LoggingView: View {
                             AchievementService.evaluateAndAward(
                                 profile: profile, logs: allLogs, context: context)
                         }
+                        NotificationService.shared.cancelTodayReminderAndRescheduleTomorrow()
                         withAnimation {
                             feedbackText = vm.feedbackMessage(
                                 baseline: baseline,
