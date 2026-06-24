@@ -7,6 +7,7 @@ struct AchievementService {
     static func evaluateAndAward(
         profile: UserProfile,
         logs: [SmokingLog] = [],
+        purchases: [PurchaseRecord] = [],
         context: NSManagedObjectContext
     ) -> [AchievementDefinition] {
         let streakDays = profile.actualStreakDays(logs: logs)
@@ -32,7 +33,7 @@ struct AchievementService {
             if let required = definition.requiredStreakDays, streakDays >= required {
                 qualifies = true
             }
-            if let required = definition.requiredMoneySaved, profile.moneySaved(logs: logs) >= required {
+            if let required = definition.requiredMoneySaved, profile.moneySaved(logs: logs, purchases: purchases) >= required {
                 qualifies = true
             }
             if let required = definition.requiredConsecutiveDaysBelow, baseline > 0,
@@ -45,33 +46,32 @@ struct AchievementService {
             }
 
             if qualifies {
-                context.insert(UnlockedAchievement(context: context, badgeID: definition.id))
+                _ = UnlockedAchievement(context: context, badgeID: definition.id)
                 newlyUnlocked.append(definition)
             }
         }
 
+        try? context.save()
         return newlyUnlocked
     }
 
     // MARK: - 减量计算辅助
 
-    /// 从最新一天起，连续低于基准的天数。无记录的天视为中断（未知）。
+    /// 从最新一天起，连续低于基准的天数。无记录视为 0 支（低于基准，继续计数）。
     private static func consecutiveDaysBelow(baseline: Int, logs: [SmokingLog]) -> Int {
         let cal = Calendar.current
         var count = 0
         var checkDate = cal.startOfDay(for: Date())
+        let threshold = baseline > 0 ? baseline : 1
 
         for _ in 0..<365 {
             if let log = logs.first(where: { $0.date == checkDate }) {
                 let effectiveBaseline = log.baselineAtTime != 0 ? Int(log.baselineAtTime) : baseline
-                if Int(log.count) < effectiveBaseline {
-                    count += 1
-                } else {
+                if Int(log.count) >= max(effectiveBaseline, 1) {
                     break
                 }
-            } else {
-                break
             }
+            count += 1
             guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
             checkDate = prev
         }

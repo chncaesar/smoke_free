@@ -57,6 +57,7 @@ struct PurchasesView: View {
                             }
                             .onDelete { indexSet in
                                 for i in indexSet { context.delete(records[i]) }
+                                try? context.save()
                             }
                         }
                     }

@@ -52,7 +52,7 @@ final class GoalsViewModel: ObservableObject {
             targetMoneySaved: useMoneyTarget ? (newTargetMoney ?? 0) : 0,
             sortOrder: sortOrder
         )
-        context.insert(goal)
+        try? context.save()
         resetForm()
         showAddSheet = false
     }
@@ -73,6 +73,7 @@ final class GoalsViewModel: ObservableObject {
         goal.reward = newReward.trimmingCharacters(in: .whitespaces)
         goal.targetDays = Int32(newTargetDays)
         goal.targetMoneySaved = useMoneyTarget ? (newTargetMoney ?? 0) : 0
+        try? goal.managedObjectContext?.save()
         editingGoal = nil
         resetForm()
         showEditSheet = false
@@ -80,6 +81,7 @@ final class GoalsViewModel: ObservableObject {
 
     func deleteGoal(_ goal: Goal, context: NSManagedObjectContext) {
         context.delete(goal)
+        try? context.save()
     }
 
     private func resetForm() {

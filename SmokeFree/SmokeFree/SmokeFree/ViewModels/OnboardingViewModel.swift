@@ -44,5 +44,6 @@ final class OnboardingViewModel: ObservableObject {
             name: name
         )
         context.insert(profile)
+        try? context.save()
     }
 }

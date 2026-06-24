@@ -118,12 +118,12 @@ private struct ExpenseStatsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("已节省金额")
+            Text(totalSaved < 0 ? "已超额金额" : "已节省金额")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(formattedSaved())
                 .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundStyle(.green)
+                .foregroundStyle(totalSaved < 0 ? .red : .green)
 
             if let comp = bestComparison {
                 if comp.count > 0 {

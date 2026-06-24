@@ -13,7 +13,7 @@ final class HealthTimelineViewModel: ObservableObject {
 
     @Published private(set) var items: [MilestoneItem] = []
 
-    func load(streakDays: Int, profile: UserProfile, logs: [SmokingLog]) {
+    func load(streakDays: Int, profile: UserProfile) {
         items = AppConfig.healthMilestones.map { milestone in
             let isUnlocked = streakDays >= milestone.requiredStreakDays
             let unlockDate: Date?
@@ -21,7 +21,7 @@ final class HealthTimelineViewModel: ObservableObject {
 
             if isUnlocked {
                 unlockDate = profile.milestoneUnlockDate(
-                    logs: logs,
+                    streakDays: streakDays,
                     requiredDays: milestone.requiredStreakDays
                 )
                 remainingText = nil

@@ -20,6 +20,7 @@ struct DashboardView: View {
     @State private var showEditGoalSheet = false
     @State private var showShareSheet = false
     @State private var exportDirURL: URL?
+    @State private var exportError: String?
 
     var body: some View {
         NavigationView {
@@ -31,7 +32,8 @@ struct DashboardView: View {
                         ReductionProgressCard(vm: vm)
 
                         MoneySavedCardView(
-                            moneySaved: vm.formattedMoneySaved(currencyCode: profile.currencyCode ?? "CNY")
+                            moneySaved: vm.moneySaved,
+                            currencyCode: profile.currencyCode ?? "CNY"
                         )
 
                         if let milestone = vm.nextMilestone {
@@ -95,6 +97,14 @@ struct DashboardView: View {
                     ShareSheet(items: [url])
                 }
             }
+            .alert("导出失败", isPresented: Binding<Bool>(
+                get: { exportError != nil },
+                set: { if !$0 { exportError = nil } }
+            )) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(exportError ?? "")
+            }
             .onAppear { updateVM() }
             .onChange(of: logs.count) { _ in updateVM() }
             .onChange(of: scenePhase) { newPhase in
@@ -102,6 +112,7 @@ struct DashboardView: View {
                     updateVM()
                     NotificationService.shared.ensureTodayReminderIfNeeded(hasLoggedToday: todayLog != nil)
                 }
+                if newPhase == .background { try? context.save() }
             }
         }
         .navigationViewStyle(.stack)
@@ -112,7 +123,7 @@ struct DashboardView: View {
         vm.update(from: profile, logs: Array(logs), purchases: Array(purchases))
         vm.updateReduction(todayLog: todayLog, profile: profile, purchases: Array(purchases), logs: Array(logs))
         vm.updateCost(profile: profile, logs: Array(logs), purchases: Array(purchases))
-        AchievementService.evaluateAndAward(profile: profile, logs: Array(logs), context: context)
+        AchievementService.evaluateAndAward(profile: profile, logs: Array(logs), purchases: Array(purchases), context: context)
         if vm.todayCount == 0 {
             Task { await HealthKitService.shared.recordSmokeFreeToday() }
         }
@@ -123,7 +134,7 @@ struct DashboardView: View {
             exportDirURL = try DataExportService.exportData(context: context)
             showShareSheet = true
         } catch {
-            exportDirURL = nil
+            exportError = "导出失败：\(error.localizedDescription)"
         }
     }
 }
@@ -243,22 +254,33 @@ private struct StreakCardView: View {
 }
 
 private struct MoneySavedCardView: View {
-    let moneySaved: String
+    let moneySaved: Double
+    let currencyCode: String
+
+    private var formattedAmount: String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currencyCode
+        f.maximumFractionDigits = 1
+        return f.string(from: NSNumber(value: moneySaved)) ?? "¥\(String(format: "%.1f", moneySaved))"
+    }
+
+    private var isNegative: Bool { moneySaved < 0 }
 
     var body: some View {
         CardView {
             HStack(spacing: 16) {
-                Image(systemName: "banknote.fill")
+                Image(systemName: isNegative ? "arrow.down.circle.fill" : "banknote.fill")
                     .font(.system(size: 36))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(isNegative ? .red : .green)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("已节省")
+                    Text(isNegative ? "已超额" : "已节省")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(moneySaved)
+                    Text(formattedAmount)
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(isNegative ? .red : .green)
                 }
                 Spacer()
             }
@@ -332,15 +354,15 @@ private struct EditBaselineView: View {
     }
 
     private func applyChanges() {
-        // 旧日志补快照（三个快照字段任一为 nil 的记录均补全）
-        for log in logs where log.baselineAtTime == nil || log.pricePerPackAtTime == nil || log.cigarettesPerPackAtTime == nil {
-            log.baselineAtTime = log.baselineAtTime ?? profile.cigarettesPerDayBefore
-            log.pricePerPackAtTime = log.pricePerPackAtTime ?? profile.pricePerPack
-            log.cigarettesPerPackAtTime = log.cigarettesPerPackAtTime ?? profile.cigarettesPerPack
+        for log in logs where log.baselineAtTime == 0 || log.pricePerPackAtTime == 0 || log.cigarettesPerPackAtTime == 0 {
+            if log.baselineAtTime == 0 { log.baselineAtTime = Int32(profile.cigarettesPerDayBefore) }
+            if log.pricePerPackAtTime == 0 { log.pricePerPackAtTime = profile.pricePerPack }
+            if log.cigarettesPerPackAtTime == 0 { log.cigarettesPerPackAtTime = Int32(profile.cigarettesPerPack) }
         }
         profile.cigarettesPerDayBefore = Int32(newBaseline)
         profile.pricePerPack = newPrice
         profile.cigarettesPerPack = Int32(newPerPack)
+        try? context.save()
     }
 }
 

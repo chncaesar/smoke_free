@@ -24,6 +24,9 @@ final class PersistenceController {
         #if targetEnvironment(simulator)
         let storeDescription = container.persistentStoreDescriptions.first!
         storeDescription.cloudKitContainerOptions = nil
+        #else
+        let storeDescription = container.persistentStoreDescriptions.first!
+        storeDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.smokefree.app")
         #endif
 
         container.loadPersistentStores { _, error in
@@ -34,7 +37,7 @@ final class PersistenceController {
         container.viewContext.automaticallyMergesChangesFromParent = true
     }
 
-    private static var model: NSManagedObjectModel {
+    static var model: NSManagedObjectModel {
         let m = NSManagedObjectModel()
 
         let profile = NSEntityDescription()

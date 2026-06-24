@@ -57,7 +57,7 @@ final class PurchaseViewModel: ObservableObject {
             pricePerPack: newPricePerPack,
             notes: newNotes.isEmpty ? nil : newNotes
         )
-        context.insert(record)
+        try? context.save()
         resetForm()
         showAddSheet = false
     }

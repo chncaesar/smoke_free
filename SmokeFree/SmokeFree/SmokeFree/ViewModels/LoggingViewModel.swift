@@ -40,10 +40,10 @@ final class LoggingViewModel: ObservableObject {
                 log.pricePerPackAtTime = p.pricePerPack
                 log.cigarettesPerPackAtTime = p.cigarettesPerPack
             }
-            context.insert(log)
             todayLog = log
         }
         hasLoggedToday = true
+        try? context.save()
     }
 
     /// 最近 30 天的记录（不含今天的空记录）

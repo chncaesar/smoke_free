@@ -37,7 +37,7 @@ struct DataImportService {
                 profile.goalName = pd.goalName
                 result.profilesUpdated = 1
             } else {
-                context.insert(UserProfile(
+                let newProfile = UserProfile(
                     context: context,
                     quitDate: pd.quitDate,
                     cigarettesPerDayBefore: pd.cigarettesPerDayBefore,
@@ -45,18 +45,21 @@ struct DataImportService {
                     cigarettesPerPack: pd.cigarettesPerPack,
                     currencyCode: pd.currencyCode,
                     name: pd.name
-                ))
+                )
                 result.profilesUpdated = 1
             }
         }
 
         // SmokingLog
         let existingLogs = try context.fetch(NSFetchRequest<SmokingLog>(entityName: "SmokingLog"))
-        var existingLogDates = Set(existingLogs.map { Calendar.current.startOfDay(for: $0.date ?? Date()) })
+        var existingLogDates = Set(existingLogs.compactMap { log -> Date? in
+            guard let date = log.date else { return nil }
+            return Calendar.current.startOfDay(for: date)
+        })
         let cal = Calendar.current
         for ld in backup.smokingLogs {
-            let logDate = cal.startOfDay(for: ld.date)
-            guard !existingLogDates.contains(logDate) else {
+            let importLogDate = cal.startOfDay(for: ld.date)
+            guard !existingLogDates.contains(importLogDate) else {
                 result.logsSkipped += 1
                 continue
             }
@@ -64,24 +67,37 @@ struct DataImportService {
             log.baselineAtTime = Int32(ld.baselineAtTime ?? 0)
             log.pricePerPackAtTime = ld.pricePerPackAtTime ?? 0
             log.cigarettesPerPackAtTime = Int32(ld.cigarettesPerPackAtTime ?? 0)
-            context.insert(log)
-            existingLogDates.insert(logDate)
+            existingLogDates.insert(importLogDate)
             result.logsAdded += 1
         }
 
         // PurchaseRecord
+        let existingPurchases = try context.fetch(NSFetchRequest<PurchaseRecord>(entityName: "PurchaseRecord"))
+        var existingPurchaseKeys = Set(existingPurchases.compactMap { p -> String? in
+            guard let d = p.date, let b = p.brand else { return nil }
+            return "\(d.timeIntervalSince1970)|\(b)|\(p.quantity)|\(p.pricePerPack)|\(p.totalCost)"
+        })
         for pd in backup.purchaseRecords {
+            let key = "\(pd.date.timeIntervalSince1970)|\(pd.brand)|\(pd.quantity)|\(pd.pricePerPack)|\(pd.totalCost)"
+            guard !existingPurchaseKeys.contains(key) else { continue }
             let record = PurchaseRecord(context: context, date: pd.date, brand: pd.brand, quantity: pd.quantity, pricePerPack: pd.pricePerPack, notes: pd.notes)
-            context.insert(record)
+            existingPurchaseKeys.insert(key)
             result.purchasesAdded += 1
         }
 
         // Goal
+        let existingGoals = try context.fetch(NSFetchRequest<Goal>(entityName: "Goal"))
+        var existingGoalKeys = Set(existingGoals.compactMap { g -> String? in
+            guard let t = g.title else { return nil }
+            return "\(t)|\(g.targetDays)|\(g.targetMoneySaved)"
+        })
         for gd in backup.goals {
-            let goal = Goal(context: context, title: gd.title, reward: gd.reward, targetDays: gd.targetDays, targetMoneySaved: gd.targetMoneySaved)
+            let key = "\(gd.title)|\(gd.targetDays)|\(gd.targetMoneySaved)"
+            guard !existingGoalKeys.contains(key) else { continue }
+            let goal = Goal(context: context, title: gd.title, reward: gd.reward, targetDays: Int(gd.targetDays), targetMoneySaved: gd.targetMoneySaved ?? 0)
             goal.isCompleted = gd.isCompleted
             goal.completedAt = gd.completedAt
-            context.insert(goal)
+            existingGoalKeys.insert(key)
             result.goalsAdded += 1
         }
 
@@ -92,11 +108,11 @@ struct DataImportService {
             guard !existingBadgeIDs.contains(ad.badgeID) else { continue }
             let achievement = UnlockedAchievement(context: context, badgeID: ad.badgeID)
             achievement.unlockedAt = ad.unlockedAt
-            context.insert(achievement)
             existingBadgeIDs.insert(ad.badgeID)
             result.achievementsAdded += 1
         }
 
+        try context.save()
         return result
     }
 }

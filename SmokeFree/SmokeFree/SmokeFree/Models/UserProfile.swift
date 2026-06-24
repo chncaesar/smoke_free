@@ -77,7 +77,7 @@ extension UserProfile {
 
     func moneySaved(logs: [SmokingLog], purchases: [PurchaseRecord] = []) -> Double {
         let exhaustionDate = Self.purchaseExhaustionDate(purchases: purchases, logs: logs)
-        let latestPurchase = purchases.max(by: { ($0.date ?? Date()) < ($1.date ?? Date()) })
+        let latestPurchase = purchases.max(by: { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) })
         return logs.reduce(0.0) { sum, log in
             let baseline = log.baselineAtTime != 0 ? Int(log.baselineAtTime) : Int(cigarettesPerDayBefore)
             let reduced = baseline - Int(log.count)
@@ -92,7 +92,7 @@ extension UserProfile {
         }
     }
 
-    private static func perCigPrice(
+    static func perCigPrice(
         log: SmokingLog,
         profilePricePerPack: Double,
         profilePerPack: Int,
@@ -103,50 +103,43 @@ extension UserProfile {
             return log.pricePerPackAtTime / Double(log.cigarettesPerPackAtTime)
         }
         if let purchase = latestPurchase,
+           let pd = purchase.date,
            let exhaustion = exhaustionDate,
            let logDate = log.date,
+           logDate >= Calendar.current.startOfDay(for: pd),
            logDate <= exhaustion {
             return purchase.pricePerPack / 20.0
         }
         return profilePricePerPack / Double(max(1, profilePerPack))
     }
 
-    private static func purchaseExhaustionDate(purchases: [PurchaseRecord], logs: [SmokingLog]) -> Date? {
-        guard let latest = purchases.max(by: { ($0.date ?? Date()) < ($1.date ?? Date()) }) else { return nil }
+    static func purchaseExhaustionDate(purchases: [PurchaseRecord], logs: [SmokingLog]) -> Date? {
+        guard let latest = purchases.max(by: { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }) else { return nil }
         let cal = Calendar.current
         let purchaseDay = cal.startOfDay(for: latest.date ?? Date())
         let totalBought = Int(latest.quantity) * 20
         var cumulative = 0
         let sortedLogs = logs
-            .filter { ($0.date ?? Date()) >= purchaseDay }
-            .sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
-        for log in sortedLogs {
-            let after = cumulative + Int(log.count)
+            .compactMap { log -> (date: Date, count: Int32)? in
+                guard let d = log.date else { return nil }
+                return (d, log.count)
+            }
+            .filter { $0.date >= purchaseDay }
+            .sorted { $0.date < $1.date }
+        for entry in sortedLogs {
+            let after = cumulative + Int(entry.count)
             if after >= totalBought {
-                return log.date
+                return entry.date
             }
             cumulative = after
         }
-        return nil
+        return Date.distantFuture
     }
 
-    func milestoneUnlockDate(logs: [SmokingLog], requiredDays: Int) -> Date? {
+    func milestoneUnlockDate(streakDays: Int, requiredDays: Int) -> Date? {
+        guard streakDays >= requiredDays else { return nil }
         let cal = Calendar.current
-        var checkDate = cal.startOfDay(for: Date())
-        let logByDate = Dictionary(uniqueKeysWithValues: logs.compactMap { log in log.date.map { ($0, log) } })
-        var consecutiveBelow = 0
-
-        while checkDate >= cal.startOfDay(for: quitDate ?? Date()) {
-            if let log = logByDate[checkDate] {
-                let baseline = log.baselineAtTime != 0 ? Int(log.baselineAtTime) : Int(cigarettesPerDayBefore)
-                let threshold = baseline > 0 ? baseline : 1
-                if Int(log.count) >= threshold { break }
-            }
-            consecutiveBelow += 1
-            if consecutiveBelow >= requiredDays { return checkDate }
-            guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
-            checkDate = prev
-        }
-        return nil
+        let daysAgo = streakDays - requiredDays
+        return cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: Date()))
     }
 }

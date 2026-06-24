@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreData
 
 struct EditGoalView: View {
     let profile: UserProfile
@@ -106,6 +107,7 @@ struct EditGoalView: View {
             profile.goalName = preset.name
             profile.goalAmount = preset.amount
         }
+        try? profile.managedObjectContext?.save()
     }
 
     private var currencySymbol: String {

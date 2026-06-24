@@ -38,8 +38,7 @@ struct HealthTimelineView: View {
         guard let profile = profiles.first else { return }
         vm.load(
             streakDays: profile.actualStreakDays(logs: Array(logs)),
-            profile: profile,
-            logs: Array(logs)
+            profile: profile
         )
     }
 }

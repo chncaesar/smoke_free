@@ -1,8 +1,10 @@
 import SwiftUI
 import CoreData
+import WidgetKit
 
 struct LoggingView: View {
     @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\PurchaseRecord.date, order: .reverse)]) private var purchases: FetchedResults<PurchaseRecord>
     @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
     @Environment(\.managedObjectContext) private var context
     @StateObject private var vm = LoggingViewModel()
@@ -28,9 +30,10 @@ struct LoggingView: View {
                                 allLogs.append(today)
                             }
                             AchievementService.evaluateAndAward(
-                                profile: profile, logs: allLogs, context: context)
+                                profile: profile, logs: allLogs, purchases: Array(purchases), context: context)
                         }
                         NotificationService.shared.cancelTodayReminderAndRescheduleTomorrow()
+                        WidgetCenter.shared.reloadAllTimelines()
                         withAnimation {
                             feedbackText = vm.feedbackMessage(
                                 baseline: baseline,
@@ -51,6 +54,7 @@ struct LoggingView: View {
                             for i in indexSet {
                                 context.delete(recent[i])
                             }
+                            try? context.save()
                         }
                     }
                 }
