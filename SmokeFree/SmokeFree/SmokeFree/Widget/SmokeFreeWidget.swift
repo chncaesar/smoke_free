@@ -11,7 +11,7 @@ struct SmokeFreeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WidgetProvider()) { entry in
             SmokeFreeWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .background(Color(.systemGray6))
         }
         .configurationDisplayName("控烟进度")
         .description("显示控烟天数和节省金额。")

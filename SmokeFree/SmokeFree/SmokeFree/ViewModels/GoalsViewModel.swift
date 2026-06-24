@@ -1,19 +1,19 @@
 import Foundation
-import SwiftData
+import Combine
+import CoreData
 
-@Observable
-final class GoalsViewModel {
-    var showAddSheet = false
-    var showEditSheet = false
-    private(set) var editingGoal: Goal? = nil
-    var hasActiveMoneyGoal = false
+final class GoalsViewModel: ObservableObject {
+    @Published var showAddSheet = false
+    @Published var showEditSheet = false
+    @Published private(set) var editingGoal: Goal? = nil
+    @Published var hasActiveMoneyGoal = false
 
     // 新目标表单
-    var newTitle = ""
-    var newReward = ""
-    var newTargetDays = 7
-    var newTargetMoney: Double? = nil
-    var useMoneyTarget = false
+    @Published var newTitle = ""
+    @Published var newReward = ""
+    @Published var newTargetDays = 7
+    @Published var newTargetMoney: Double? = nil
+    @Published var useMoneyTarget = false
 
     var isFormValid: Bool {
         !newTitle.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -31,8 +31,8 @@ final class GoalsViewModel {
     func checkCompletion(goals: [Goal], streakDays: Int, moneySaved: Double) {
         for goal in goals where !goal.isCompleted {
             let achieved: Bool
-            if let target = goal.targetMoneySaved {
-                achieved = moneySaved >= target
+            if goal.targetMoneySaved > 0 {
+                achieved = moneySaved >= goal.targetMoneySaved
             } else {
                 achieved = streakDays >= goal.targetDays
             }
@@ -43,12 +43,13 @@ final class GoalsViewModel {
         }
     }
 
-    func addGoal(context: ModelContext, sortOrder: Int) {
+    func addGoal(context: NSManagedObjectContext, sortOrder: Int) {
         let goal = Goal(
+            context: context,
             title: newTitle.trimmingCharacters(in: .whitespaces),
             reward: newReward.trimmingCharacters(in: .whitespaces),
             targetDays: newTargetDays,
-            targetMoneySaved: useMoneyTarget ? newTargetMoney : nil,
+            targetMoneySaved: useMoneyTarget ? (newTargetMoney ?? 0) : 0,
             sortOrder: sortOrder
         )
         context.insert(goal)
@@ -58,11 +59,11 @@ final class GoalsViewModel {
 
     func startEditing(_ goal: Goal) {
         editingGoal = goal
-        newTitle = goal.title
-        newReward = goal.reward
-        newTargetDays = goal.targetDays
+        newTitle = goal.title ?? ""
+        newReward = goal.reward ?? ""
+        newTargetDays = Int(goal.targetDays)
         newTargetMoney = goal.targetMoneySaved
-        useMoneyTarget = goal.targetMoneySaved != nil
+        useMoneyTarget = goal.targetMoneySaved > 0
         showEditSheet = true
     }
 
@@ -70,14 +71,14 @@ final class GoalsViewModel {
         guard let goal = editingGoal else { return }
         goal.title = newTitle.trimmingCharacters(in: .whitespaces)
         goal.reward = newReward.trimmingCharacters(in: .whitespaces)
-        goal.targetDays = newTargetDays
-        goal.targetMoneySaved = useMoneyTarget ? newTargetMoney : nil
+        goal.targetDays = Int32(newTargetDays)
+        goal.targetMoneySaved = useMoneyTarget ? (newTargetMoney ?? 0) : 0
         editingGoal = nil
         resetForm()
         showEditSheet = false
     }
 
-    func deleteGoal(_ goal: Goal, context: ModelContext) {
+    func deleteGoal(_ goal: Goal, context: NSManagedObjectContext) {
         context.delete(goal)
     }
 

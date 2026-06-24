@@ -1,9 +1,9 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct OnboardingContainerView: View {
-    @State private var vm = OnboardingViewModel()
-    @Environment(\.modelContext) private var context
+    @StateObject private var vm = OnboardingViewModel()
+    @Environment(\.managedObjectContext) private var context
     @AppStorage("onboardingComplete") private var onboardingComplete = false
 
     var body: some View {

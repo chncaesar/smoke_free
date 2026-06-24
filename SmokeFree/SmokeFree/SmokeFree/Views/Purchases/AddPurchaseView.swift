@@ -7,7 +7,7 @@ struct AddPurchaseView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section("香烟信息") {
                     TextField("品牌名称", text: Binding(
@@ -69,5 +69,6 @@ struct AddPurchaseView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }

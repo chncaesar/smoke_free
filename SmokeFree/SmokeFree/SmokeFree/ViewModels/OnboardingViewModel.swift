@@ -1,14 +1,14 @@
 import Foundation
-import SwiftData
+import Combine
+import CoreData
 
-@Observable
-final class OnboardingViewModel {
-    var currentStep: Int = 0
-    var name: String = ""
-    var cigarettesPerDay: Int = 20
-    var pricePerPack: Double = 25.0
-    var cigarettesPerPack: Int = 20
-    var quitDate: Date = Date()
+final class OnboardingViewModel: ObservableObject {
+    @Published var currentStep: Int = 0
+    @Published var name: String = ""
+    @Published var cigarettesPerDay: Int = 20
+    @Published var pricePerPack: Double = 25.0
+    @Published var cigarettesPerPack: Int = 20
+    @Published var quitDate: Date = Date()
 
     let totalSteps = 4
 
@@ -34,8 +34,9 @@ final class OnboardingViewModel {
         }
     }
 
-    func finish(context: ModelContext) {
+    func finish(context: NSManagedObjectContext) {
         let profile = UserProfile(
+            context: context,
             quitDate: quitDate,
             cigarettesPerDayBefore: cigarettesPerDay,
             pricePerPack: pricePerPack,

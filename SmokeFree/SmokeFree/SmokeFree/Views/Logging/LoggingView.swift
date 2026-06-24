@@ -1,22 +1,22 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct LoggingView: View {
-    @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
-    @Query private var profiles: [UserProfile]
-    @Environment(\.modelContext) private var context
-    @State private var vm = LoggingViewModel()
+    @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
+    @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
+    @Environment(\.managedObjectContext) private var context
+    @StateObject private var vm = LoggingViewModel()
     @State private var feedbackText: String? = nil
 
-    private var baseline: Int { profiles.first?.cigarettesPerDayBefore ?? 0 }
+    private var baseline: Int { Int(profiles.first?.cigarettesPerDayBefore ?? Int32(0)) }
     private var yesterdayLog: SmokingLog? {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1,
                                               to: Calendar.current.startOfDay(for: Date()))!
-        return logs.first { $0.date == yesterday }
+        return logs.first(where: { ($0.date ?? Date()) == yesterday })
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             List {
                 // 今日记录区
                 Section("今天") {
@@ -24,7 +24,7 @@ struct LoggingView: View {
                         vm.save(context: context, profile: profiles.first)
                         if let profile = profiles.first {
                             var allLogs = logs.map { $0 }
-                            if let today = vm.todayLog, !allLogs.contains(where: { $0.id == today.id }) {
+                            if let today = vm.todayLog, !allLogs.contains(where: { $0.objectID == today.objectID }) {
                                 allLogs.append(today)
                             }
                             AchievementService.evaluateAndAward(
@@ -34,17 +34,17 @@ struct LoggingView: View {
                         withAnimation {
                             feedbackText = vm.feedbackMessage(
                                 baseline: baseline,
-                                yesterdayCount: yesterdayLog?.count
+                                yesterdayCount: yesterdayLog.map { Int($0.count) }
                             )
                         }
                     })
                 }
 
                 // 历史记录
-                let recent = vm.recentLogs(from: logs)
+                let recent = vm.recentLogs(from: Array(logs))
                 if !recent.isEmpty {
                     Section("最近 30 天") {
-                        ForEach(recent) { log in
+                        ForEach(recent, id: \.objectID) { log in
                             LogRowView(log: log)
                         }
                         .onDelete { indexSet in
@@ -56,9 +56,10 @@ struct LoggingView: View {
                 }
             }
             .navigationTitle("记录")
-            .onAppear { vm.load(from: logs) }
-            .onChange(of: logs) { vm.load(from: logs) }
+            .onAppear { vm.load(from: Array(logs)) }
+            .onChange(of: logs.count) { _ in vm.load(from: Array(logs)) }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -132,7 +133,7 @@ private struct LogRowView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(log.date, style: .date)
+                Text(log.date ?? Date(), style: .date)
                     .font(.subheadline)
                 if let notes = log.notes {
                     Text(notes)
@@ -142,11 +143,11 @@ private struct LogRowView: View {
             }
             Spacer()
             HStack(spacing: 4) {
-                if log.count == 0 {
+                if Int(log.count) == 0 {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                 } else {
-                    Text("\(log.count)")
+                    Text("\(Int(log.count))")
                         .font(.headline.monospacedDigit())
                     Text("支")
                         .font(.caption)

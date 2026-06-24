@@ -8,7 +8,7 @@ struct AddGoalView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section("目标") {
                     TextField("例：连续控烟一周", text: Binding(
@@ -27,7 +27,7 @@ struct AddGoalView: View {
                         in: 1...365
                     )
 
-                    let moneyToggleDisabled = vm.hasActiveMoneyGoal && vm.editingGoal?.targetMoneySaved == nil
+                    let moneyToggleDisabled = vm.hasActiveMoneyGoal && (vm.editingGoal?.targetMoneySaved ?? 0) == 0
                     Toggle("同时设置金额目标", isOn: Binding(
                         get: { vm.useMoneyTarget },
                         set: { vm.useMoneyTarget = $0 }
@@ -76,5 +76,6 @@ struct AddGoalView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }

@@ -1,14 +1,14 @@
 import SwiftUI
-import SwiftData
+import CoreData
 import UniformTypeIdentifiers
 
 /// 进度 Tab 的容器视图，聚合趋势图表、支出统计、健康时间线、成就徽章
 struct ProgressTabView: View {
-    @Query private var profiles: [UserProfile]
-    @Query private var purchases: [PurchaseRecord]
-    @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
-    @Query private var goals: [Goal]
-    @Environment(\.modelContext) private var context
+    @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
+    @FetchRequest(sortDescriptors: []) private var purchases: FetchedResults<PurchaseRecord>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\Goal.sortOrder)]) private var goals: FetchedResults<Goal>
+    @Environment(\.managedObjectContext) private var context
 
     @State private var showFileImporter = false
     @State private var importMessage: String?
@@ -16,7 +16,7 @@ struct ProgressTabView: View {
     private var profile: UserProfile? { profiles.first }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             List {
                 if let profile {
                     Section {
@@ -24,7 +24,7 @@ struct ProgressTabView: View {
                             profile: profile,
                             logs: Array(logs),
                             purchases: Array(purchases),
-                            moneyGoals: goals.filter { $0.targetMoneySaved != nil }
+                            moneyGoals: goals.filter { $0.targetMoneySaved > 0 }
                         )
                     }
                 }
@@ -58,6 +58,7 @@ struct ProgressTabView: View {
                 if let msg = importMessage { Text(msg) }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func handleImport(_ result: Result<URL, Error>) {
@@ -142,12 +143,12 @@ private struct ExpenseStatsView: View {
             if !moneyGoals.isEmpty {
                 Divider()
                     .padding(.vertical, 4)
-                ForEach(moneyGoals) { goal in
-                    if let target = goal.targetMoneySaved {
+                ForEach(moneyGoals, id: \.objectID) { goal in
+                    if goal.targetMoneySaved > 0 {
                         MoneyGoalProgressRow(
                             goal: goal,
                             current: totalSaved,
-                            target: target
+                            target: goal.targetMoneySaved
                         )
                     }
                 }
@@ -169,7 +170,7 @@ private struct MoneyGoalProgressRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(goal.title)
+                Text(goal.title ?? "")
                     .font(.subheadline)
                 Spacer()
                 if goal.isCompleted {

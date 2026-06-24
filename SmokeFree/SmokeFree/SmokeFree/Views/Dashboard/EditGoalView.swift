@@ -19,7 +19,7 @@ struct EditGoalView: View {
             _selectedPresetID = State(initialValue: match.id)
         } else {
             _isCustomMode = State(initialValue: true)
-            _customName = State(initialValue: profile.goalName)
+            _customName = State(initialValue: profile.goalName ?? "")
             _customAmount = State(initialValue: profile.goalAmount)
         }
     }
@@ -32,7 +32,7 @@ struct EditGoalView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section("选择对比目标") {
                     ForEach(AppConfig.costComparisonPresets) { preset in
@@ -60,9 +60,9 @@ struct EditGoalView: View {
                 }
                 Section {
                     Toggle("自定义目标", isOn: $isCustomMode)
-                        .onChange(of: isCustomMode) { _, newVal in
+                        .onChange(of: isCustomMode, perform: { newVal in
                             if newVal { selectedPresetID = "" }
-                        }
+                        })
                     if isCustomMode {
                         TextField("目标名称", text: $customName)
                         HStack {
@@ -95,6 +95,7 @@ struct EditGoalView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func applyChanges() {
@@ -111,7 +112,7 @@ struct EditGoalView: View {
         let f = NumberFormatter()
         f.numberStyle = .currency
         f.currencyCode = profile.currencyCode
-        return f.currencySymbol ?? profile.currencyCode
+        return f.currencySymbol ?? profile.currencyCode ?? ""
     }
 
     private func formatCurrency(_ amount: Double) -> String {

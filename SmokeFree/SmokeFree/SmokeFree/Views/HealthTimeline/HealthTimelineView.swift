@@ -1,10 +1,10 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct HealthTimelineView: View {
-    @Query private var profiles: [UserProfile]
-    @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
-    @State private var vm = HealthTimelineViewModel()
+    @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
+    @StateObject private var vm = HealthTimelineViewModel()
 
     var body: some View {
         List {
@@ -31,7 +31,7 @@ struct HealthTimelineView: View {
         .navigationTitle("控烟里程碑")
         .listStyle(.insetGrouped)
         .onAppear { reload() }
-        .onChange(of: logs) { reload() }
+        .onChange(of: logs.count) { _ in reload() }
     }
 
     private func reload() {

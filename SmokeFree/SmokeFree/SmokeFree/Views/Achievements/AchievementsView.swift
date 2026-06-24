@@ -1,9 +1,9 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct AchievementsView: View {
-    @Query private var unlocked: [UnlockedAchievement]
-    @State private var vm = AchievementsViewModel()
+    @FetchRequest(sortDescriptors: []) private var unlocked: FetchedResults<UnlockedAchievement>
+    @StateObject private var vm = AchievementsViewModel()
 
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 16)]
 
@@ -25,8 +25,8 @@ struct AchievementsView: View {
             .padding(.vertical)
         }
         .navigationTitle("成就")
-        .onAppear { vm.load(unlocked: unlocked) }
-        .onChange(of: unlocked) { vm.load(unlocked: unlocked) }
+        .onAppear { vm.load(unlocked: Array(unlocked)) }
+        .onChange(of: unlocked.count) { _ in vm.load(unlocked: Array(unlocked)) }
     }
 }
 

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 
 struct DataExportService {
     struct BackupData: Codable {
@@ -55,20 +55,20 @@ struct DataExportService {
         let unlockedAt: Date
     }
 
-    static func exportData(context: ModelContext) throws -> URL {
-        let profiles = try context.fetch(FetchDescriptor<UserProfile>())
-        let logs = try context.fetch(FetchDescriptor<SmokingLog>())
-        let purchases = try context.fetch(FetchDescriptor<PurchaseRecord>())
-        let goals = try context.fetch(FetchDescriptor<Goal>())
-        let achievements = try context.fetch(FetchDescriptor<UnlockedAchievement>())
+    static func exportData(context: NSManagedObjectContext) throws -> URL {
+        let profiles = try context.fetch(NSFetchRequest<UserProfile>(entityName: "UserProfile"))
+        let logs = try context.fetch(NSFetchRequest<SmokingLog>(entityName: "SmokingLog"))
+        let purchases = try context.fetch(NSFetchRequest<PurchaseRecord>(entityName: "PurchaseRecord"))
+        let goals = try context.fetch(NSFetchRequest<Goal>(entityName: "Goal"))
+        let achievements = try context.fetch(NSFetchRequest<UnlockedAchievement>(entityName: "UnlockedAchievement"))
 
         let profileData: ProfileData?
         if let p = profiles.first {
             profileData = ProfileData(
-                quitDate: p.quitDate, cigarettesPerDayBefore: p.cigarettesPerDayBefore,
-                pricePerPack: p.pricePerPack, cigarettesPerPack: p.cigarettesPerPack,
-                currencyCode: p.currencyCode, name: p.name,
-                goalAmount: p.goalAmount, goalName: p.goalName
+                quitDate: p.quitDate ?? Date(), cigarettesPerDayBefore: Int(p.cigarettesPerDayBefore),
+                pricePerPack: p.pricePerPack, cigarettesPerPack: Int(p.cigarettesPerPack),
+                currencyCode: p.currencyCode ?? "CNY", name: p.name ?? "",
+                goalAmount: p.goalAmount, goalName: p.goalName ?? ""
             )
         } else {
             profileData = nil
@@ -78,10 +78,10 @@ struct DataExportService {
             version: 1,
             exportDate: Date(),
             userProfile: profileData,
-            smokingLogs: logs.map { LogData(date: $0.date, count: $0.count, notes: $0.notes, baselineAtTime: $0.baselineAtTime, pricePerPackAtTime: $0.pricePerPackAtTime, cigarettesPerPackAtTime: $0.cigarettesPerPackAtTime) },
-            purchaseRecords: purchases.map { PurchaseData(date: $0.date, brand: $0.brand, quantity: $0.quantity, pricePerPack: $0.pricePerPack, totalCost: $0.totalCost, notes: $0.notes) },
-            goals: goals.map { GoalData(title: $0.title, reward: $0.reward, targetDays: $0.targetDays, targetMoneySaved: $0.targetMoneySaved, isCompleted: $0.isCompleted, completedAt: $0.completedAt) },
-            unlockedAchievements: achievements.map { AchievementData(badgeID: $0.badgeID, unlockedAt: $0.unlockedAt) }
+            smokingLogs: logs.map { LogData(date: $0.date ?? Date(), count: Int($0.count), notes: $0.notes, baselineAtTime: $0.baselineAtTime != 0 ? Int($0.baselineAtTime) : nil, pricePerPackAtTime: $0.pricePerPackAtTime != 0 ? $0.pricePerPackAtTime : nil, cigarettesPerPackAtTime: $0.cigarettesPerPackAtTime != 0 ? Int($0.cigarettesPerPackAtTime) : nil) },
+            purchaseRecords: purchases.map { PurchaseData(date: $0.date ?? Date(), brand: $0.brand ?? "", quantity: Int($0.quantity), pricePerPack: $0.pricePerPack, totalCost: $0.totalCost, notes: $0.notes) },
+            goals: goals.map { GoalData(title: $0.title ?? "", reward: $0.reward ?? "", targetDays: Int($0.targetDays), targetMoneySaved: $0.targetMoneySaved, isCompleted: $0.isCompleted, completedAt: $0.completedAt) },
+            unlockedAchievements: achievements.map { AchievementData(badgeID: $0.badgeID ?? "", unlockedAt: $0.unlockedAt ?? Date()) }
         )
 
         let df = DateFormatter()

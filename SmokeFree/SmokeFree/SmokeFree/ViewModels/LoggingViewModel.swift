@@ -1,19 +1,19 @@
 import Foundation
-import SwiftData
+import Combine
+import CoreData
 
-@Observable
-final class LoggingViewModel {
-    var todayCount: Int = 0
-    var notes: String = ""
-    var hasLoggedToday: Bool = false
+final class LoggingViewModel: ObservableObject {
+    @Published var todayCount: Int = 0
+    @Published var notes: String = ""
+    @Published var hasLoggedToday: Bool = false
 
-    private(set) var todayLog: SmokingLog?
+    @Published private(set) var todayLog: SmokingLog?
 
     func load(from logs: [SmokingLog]) {
         let today = Calendar.current.startOfDay(for: Date())
         todayLog = logs.first { $0.date == today }
         if let log = todayLog {
-            todayCount = log.count
+            todayCount = Int(log.count)
             notes = log.notes ?? ""
             hasLoggedToday = true
         } else {
@@ -23,18 +23,18 @@ final class LoggingViewModel {
         }
     }
 
-    func save(context: ModelContext, profile: UserProfile?) {
+    func save(context: NSManagedObjectContext, profile: UserProfile?) {
         let today = Calendar.current.startOfDay(for: Date())
         if let existing = todayLog {
-            existing.count = todayCount
+            existing.count = Int32(todayCount)
             existing.notes = notes.isEmpty ? nil : notes
-            if existing.baselineAtTime == nil, let p = profile {
+            if existing.baselineAtTime == 0, let p = profile {
                 existing.baselineAtTime = p.cigarettesPerDayBefore
                 existing.pricePerPackAtTime = p.pricePerPack
                 existing.cigarettesPerPackAtTime = p.cigarettesPerPack
             }
         } else {
-            let log = SmokingLog(date: today, count: todayCount, notes: notes.isEmpty ? nil : notes)
+            let log = SmokingLog(context: context, date: today, count: todayCount, notes: notes.isEmpty ? nil : notes)
             if let p = profile {
                 log.baselineAtTime = p.cigarettesPerDayBefore
                 log.pricePerPackAtTime = p.pricePerPack
@@ -50,8 +50,8 @@ final class LoggingViewModel {
     func recentLogs(from logs: [SmokingLog]) -> [SmokingLog] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         return logs
-            .filter { $0.date >= Calendar.current.startOfDay(for: cutoff) }
-            .sorted { $0.date > $1.date }
+            .filter { ($0.date ?? .distantPast) >= Calendar.current.startOfDay(for: cutoff) }
+            .sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
     }
 
     // MARK: - 保存后正向反馈

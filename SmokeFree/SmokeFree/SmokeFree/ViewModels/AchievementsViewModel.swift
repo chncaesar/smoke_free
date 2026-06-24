@@ -1,8 +1,8 @@
 import Foundation
-import SwiftData
+import Combine
+import CoreData
 
-@Observable
-final class AchievementsViewModel {
+final class AchievementsViewModel: ObservableObject {
     struct BadgeItem: Identifiable {
         let definition: AchievementDefinition
         let isUnlocked: Bool
@@ -11,11 +11,16 @@ final class AchievementsViewModel {
         var id: String { definition.id }
     }
 
-    private(set) var badges: [BadgeItem] = []
-    private(set) var unlockedCount: Int = 0
+    @Published private(set) var badges: [BadgeItem] = []
+    @Published private(set) var unlockedCount: Int = 0
 
     func load(unlocked: [UnlockedAchievement]) {
-        let unlockedMap = Dictionary(uniqueKeysWithValues: unlocked.map { ($0.badgeID, $0.unlockedAt) })
+        var unlockedMap: [String: Date] = [:]
+        for item in unlocked {
+            if let badgeID = item.badgeID, let unlockedAt = item.unlockedAt {
+                unlockedMap[badgeID] = unlockedAt
+            }
+        }
         badges = AppConfig.achievementDefinitions.map { def in
             BadgeItem(
                 definition: def,

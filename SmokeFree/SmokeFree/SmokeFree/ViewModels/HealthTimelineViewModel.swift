@@ -1,7 +1,7 @@
 import Foundation
+import Combine
 
-@Observable
-final class HealthTimelineViewModel {
+final class HealthTimelineViewModel: ObservableObject {
     struct MilestoneItem: Identifiable {
         let milestone: HealthMilestone
         let isUnlocked: Bool
@@ -11,7 +11,7 @@ final class HealthTimelineViewModel {
         var id: String { milestone.id }
     }
 
-    private(set) var items: [MilestoneItem] = []
+    @Published private(set) var items: [MilestoneItem] = []
 
     func load(streakDays: Int, profile: UserProfile, logs: [SmokingLog]) {
         items = AppConfig.healthMilestones.map { milestone in

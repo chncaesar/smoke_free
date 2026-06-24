@@ -1,16 +1,16 @@
 import Foundation
-import SwiftData
+import Combine
+import CoreData
 
-@Observable
-final class PurchaseViewModel {
-    var showAddSheet = false
+final class PurchaseViewModel: ObservableObject {
+    @Published var showAddSheet = false
 
     // 新购烟表单
-    var newBrand = ""
-    var newQuantity = 1
-    var newPricePerPack: Double = 25.0
-    var newDate = Date()
-    var newNotes = ""
+    @Published var newBrand = ""
+    @Published var newQuantity = 1
+    @Published var newPricePerPack: Double = 25.0
+    @Published var newDate = Date()
+    @Published var newNotes = ""
 
     var isFormValid: Bool {
         !newBrand.trimmingCharacters(in: .whitespaces).isEmpty && newQuantity > 0 && newPricePerPack > 0
@@ -24,19 +24,19 @@ final class PurchaseViewModel {
         let cal = Calendar.current
         let now = Date()
         return purchases
-            .filter { cal.isDate($0.date, equalTo: now, toGranularity: .month) }
+            .filter { cal.isDate($0.date ?? .distantPast, equalTo: now, toGranularity: .month) }
             .reduce(0) { $0 + $1.totalCost }
     }
 
     /// 按月份分组，每组 (monthLabel, records)
     func groupedByMonth(purchases: [PurchaseRecord]) -> [(String, [PurchaseRecord])] {
-        let sorted = purchases.sorted { $0.date > $1.date }
+        let sorted = purchases.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy 年 M 月"
         var groups: [(String, [PurchaseRecord])] = []
         var current: (String, [PurchaseRecord])? = nil
         for p in sorted {
-            let label = formatter.string(from: p.date)
+            let label = formatter.string(from: p.date ?? Date())
             if current?.0 == label {
                 current!.1.append(p)
             } else {
@@ -48,8 +48,9 @@ final class PurchaseViewModel {
         return groups
     }
 
-    func addPurchase(context: ModelContext) {
+    func addPurchase(context: NSManagedObjectContext) {
         let record = PurchaseRecord(
+            context: context,
             date: newDate,
             brand: newBrand.trimmingCharacters(in: .whitespaces),
             quantity: newQuantity,

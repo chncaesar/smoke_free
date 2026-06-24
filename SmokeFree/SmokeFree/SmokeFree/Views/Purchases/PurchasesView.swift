@@ -1,13 +1,13 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct PurchasesView: View {
-    @Query(sort: \PurchaseRecord.date, order: .reverse) private var purchases: [PurchaseRecord]
-    @Environment(\.modelContext) private var context
-    @State private var vm = PurchaseViewModel()
+    @FetchRequest(sortDescriptors: [SortDescriptor(\PurchaseRecord.date, order: .reverse)]) private var purchases: FetchedResults<PurchaseRecord>
+    @Environment(\.managedObjectContext) private var context
+    @StateObject private var vm = PurchaseViewModel()
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             List {
                 // 统计摘要
                 Section {
@@ -16,7 +16,7 @@ struct PurchasesView: View {
                             Text("本月支出")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text("¥\(String(format: "%.1f", vm.spentThisMonth(purchases: purchases)))")
+                            Text("¥\(String(format: "%.1f", vm.spentThisMonth(purchases: Array(purchases))))")
                                 .font(.title2.bold())
                         }
                         Spacer()
@@ -24,7 +24,7 @@ struct PurchasesView: View {
                             Text("累计总支出")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text("¥\(String(format: "%.1f", vm.totalSpent(purchases: purchases)))")
+                            Text("¥\(String(format: "%.1f", vm.totalSpent(purchases: Array(purchases))))")
                                 .font(.title2.bold())
                                 .foregroundStyle(.red)
                         }
@@ -33,18 +33,26 @@ struct PurchasesView: View {
                 }
 
                 // 按月分组
-                let groups = vm.groupedByMonth(purchases: purchases)
+                let groups = vm.groupedByMonth(purchases: Array(purchases))
                 if groups.isEmpty {
-                    ContentUnavailableView(
-                        "没有购烟记录",
-                        systemImage: "cart.badge.minus",
-                        description: Text("点击右上角添加记录")
-                    )
+                    VStack(spacing: 8) {
+                        Spacer().frame(height: 40)
+                        Image(systemName: "cart.badge.minus")
+                            .font(.system(size: 44))
+                            .foregroundColor(.secondary)
+                        Text("没有购烟记录")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Text("点击右上角添加记录")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                 } else {
                     ForEach(groups, id: \.0) { (month, records) in
                         Section(month) {
-                            ForEach(records) { record in
+                            ForEach(records, id: \.objectID) { record in
                                 PurchaseRowView(record: record)
                             }
                             .onDelete { indexSet in
@@ -68,6 +76,7 @@ struct PurchasesView: View {
                 })
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -79,13 +88,13 @@ private struct PurchaseRowView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(record.brand)
+                Text(record.brand ?? "")
                     .font(.headline)
                 HStack(spacing: 8) {
-                    Text(record.date.formatted(date: .abbreviated, time: .omitted))
+                    Text((record.date ?? Date()).formatted(date: .abbreviated, time: .omitted))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(record.quantity) 包 × ¥\(String(format: "%.1f", record.pricePerPack))")
+                    Text("\(Int(record.quantity)) 包 × ¥\(String(format: "%.1f", record.pricePerPack))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

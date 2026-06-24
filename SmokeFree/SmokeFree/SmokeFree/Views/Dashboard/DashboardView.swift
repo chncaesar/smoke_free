@@ -1,19 +1,19 @@
 import SwiftUI
-import SwiftData
+import CoreData
 import UIKit
 
 struct DashboardView: View {
-    @Query private var profiles: [UserProfile]
-    @Query(sort: \SmokingLog.date, order: .reverse) private var logs: [SmokingLog]
-    @Query(sort: \PurchaseRecord.date, order: .reverse) private var purchases: [PurchaseRecord]
-    @Environment(\.modelContext) private var context
+    @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
+    @FetchRequest(sortDescriptors: [SortDescriptor(\PurchaseRecord.date, order: .reverse)]) private var purchases: FetchedResults<PurchaseRecord>
+    @Environment(\.managedObjectContext) private var context
     @Environment(\.scenePhase) private var scenePhase
-    @State private var vm = DashboardViewModel()
+    @StateObject private var vm = DashboardViewModel()
 
     private var profile: UserProfile? { profiles.first }
     private var todayLog: SmokingLog? {
         let today = Calendar.current.startOfDay(for: Date())
-        return logs.first { $0.date == today }
+        return logs.first(where: { ($0.date ?? Date()) == today })
     }
 
     @State private var showEditBaseline = false
@@ -22,7 +22,7 @@ struct DashboardView: View {
     @State private var exportDirURL: URL?
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ScrollView {
                 VStack(spacing: 16) {
                     if let profile {
@@ -31,7 +31,7 @@ struct DashboardView: View {
                         ReductionProgressCard(vm: vm)
 
                         MoneySavedCardView(
-                            moneySaved: vm.formattedMoneySaved(currencyCode: profile.currencyCode)
+                            moneySaved: vm.formattedMoneySaved(currencyCode: profile.currencyCode ?? "CNY")
                         )
 
                         if let milestone = vm.nextMilestone {
@@ -47,11 +47,19 @@ struct DashboardView: View {
                         }
 
                     } else {
-                        ContentUnavailableView(
-                            "完成引导以开始",
-                            systemImage: "lungs",
-                            description: Text("请先完成初始设置")
-                        )
+                        VStack(spacing: 8) {
+                            Spacer().frame(height: 40)
+                            Image(systemName: "lungs")
+                                .font(.system(size: 44))
+                                .foregroundColor(.secondary)
+                            Text("完成引导以开始")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                            Text("请先完成初始设置")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 .padding(.horizontal)
@@ -88,14 +96,15 @@ struct DashboardView: View {
                 }
             }
             .onAppear { updateVM() }
-            .onChange(of: logs) { updateVM() }
-            .onChange(of: scenePhase) { _, newPhase in
+            .onChange(of: logs.count) { _ in updateVM() }
+            .onChange(of: scenePhase) { newPhase in
                 if newPhase == .active {
                     updateVM()
                     NotificationService.shared.ensureTodayReminderIfNeeded(hasLoggedToday: todayLog != nil)
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func updateVM() {
@@ -103,7 +112,7 @@ struct DashboardView: View {
         vm.update(from: profile, logs: Array(logs), purchases: Array(purchases))
         vm.updateReduction(todayLog: todayLog, profile: profile, purchases: Array(purchases), logs: Array(logs))
         vm.updateCost(profile: profile, logs: Array(logs), purchases: Array(purchases))
-        AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
+        AchievementService.evaluateAndAward(profile: profile, logs: Array(logs), context: context)
         if vm.todayCount == 0 {
             Task { await HealthKitService.shared.recordSmokeFreeToday() }
         }
@@ -262,7 +271,7 @@ private struct MoneySavedCardView: View {
 private struct EditBaselineView: View {
     let profile: UserProfile
     let logs: [SmokingLog]
-    let context: ModelContext
+    let context: NSManagedObjectContext
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -270,18 +279,18 @@ private struct EditBaselineView: View {
     @State private var newPrice: Double
     @State private var newPerPack: Int
 
-    init(profile: UserProfile, logs: [SmokingLog], context: ModelContext, onSave: @escaping () -> Void) {
+    init(profile: UserProfile, logs: [SmokingLog], context: NSManagedObjectContext, onSave: @escaping () -> Void) {
         self.profile = profile
         self.logs = logs
         self.context = context
         self.onSave = onSave
-        _newBaseline = State(initialValue: profile.cigarettesPerDayBefore)
+        _newBaseline = State(initialValue: Int(profile.cigarettesPerDayBefore))
         _newPrice = State(initialValue: profile.pricePerPack)
-        _newPerPack = State(initialValue: profile.cigarettesPerPack)
+        _newPerPack = State(initialValue: Int(profile.cigarettesPerPack))
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section("每日基准用量") {
                     Stepper("每天 \(newBaseline) 支", value: $newBaseline, in: 1...200)
@@ -319,6 +328,7 @@ private struct EditBaselineView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 
     private func applyChanges() {
@@ -328,9 +338,9 @@ private struct EditBaselineView: View {
             log.pricePerPackAtTime = log.pricePerPackAtTime ?? profile.pricePerPack
             log.cigarettesPerPackAtTime = log.cigarettesPerPackAtTime ?? profile.cigarettesPerPack
         }
-        profile.cigarettesPerDayBefore = newBaseline
+        profile.cigarettesPerDayBefore = Int32(newBaseline)
         profile.pricePerPack = newPrice
-        profile.cigarettesPerPack = newPerPack
+        profile.cigarettesPerPack = Int32(newPerPack)
     }
 }
 
@@ -353,14 +363,14 @@ private struct SmokingCostCard: View {
                             .foregroundStyle(.tertiary)
                     }
 
-                    Text("按现在用量，每年花费 \(vm.formatCurrency(vm.annualBaselineCost, currencyCode: profile.currencyCode))")
+                    Text("按现在用量，每年花费 \(vm.formatCurrency(vm.annualBaselineCost, currencyCode: profile.currencyCode ?? "CNY"))")
                         .font(.subheadline)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(vm.formattedYearsToGoal()) 后")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(.red)
-                        Text("抽掉一辆「\(profile.goalName)」（\(vm.formatCurrency(profile.goalAmount, currencyCode: profile.currencyCode))）")
+                        Text("抽掉一辆「\(profile.goalName ?? "")」（\(vm.formatCurrency(profile.goalAmount, currencyCode: profile.currencyCode ?? "CNY"))）")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -368,7 +378,7 @@ private struct SmokingCostCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
-                    Text("迄今实际花费：\(vm.formatCurrency(vm.totalSpentOnSmokes, currencyCode: profile.currencyCode))")
+                    Text("迄今实际花费：\(vm.formatCurrency(vm.totalSpentOnSmokes, currencyCode: profile.currencyCode ?? "CNY"))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

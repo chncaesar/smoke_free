@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 
 struct AchievementService {
     /// 评估并颁发成就，返回本次新解锁的徽章列表
@@ -7,19 +7,19 @@ struct AchievementService {
     static func evaluateAndAward(
         profile: UserProfile,
         logs: [SmokingLog] = [],
-        context: ModelContext
+        context: NSManagedObjectContext
     ) -> [AchievementDefinition] {
         let streakDays = profile.actualStreakDays(logs: logs)
         let baseline = profile.cigarettesPerDayBefore
 
         // 获取已解锁的 badgeID 集合
-        let fetchDescriptor = FetchDescriptor<UnlockedAchievement>()
-        let existing = (try? context.fetch(fetchDescriptor)) ?? []
+        let fetchRequest = NSFetchRequest<UnlockedAchievement>(entityName: "UnlockedAchievement")
+        let existing = (try? context.fetch(fetchRequest)) ?? []
         let unlockedIDs = Set(existing.map(\.badgeID))
 
         // 预计算减量相关数据（有 logs 时才有意义）
-        let sortedLogs = logs.sorted { $0.date > $1.date }
-        let consecutiveDaysBelow = Self.consecutiveDaysBelow(baseline: baseline, logs: sortedLogs)
+        let sortedLogs = logs.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+        let consecutiveDaysBelow = Self.consecutiveDaysBelow(baseline: Int(baseline), logs: sortedLogs)
         let sevenDayAvg = Self.sevenDayAverage(logs: sortedLogs)
 
         var newlyUnlocked: [AchievementDefinition] = []
@@ -45,7 +45,7 @@ struct AchievementService {
             }
 
             if qualifies {
-                context.insert(UnlockedAchievement(badgeID: definition.id))
+                context.insert(UnlockedAchievement(context: context, badgeID: definition.id))
                 newlyUnlocked.append(definition)
             }
         }
@@ -63,8 +63,8 @@ struct AchievementService {
 
         for _ in 0..<365 {
             if let log = logs.first(where: { $0.date == checkDate }) {
-                let effectiveBaseline = log.baselineAtTime ?? baseline
-                if log.count < effectiveBaseline {
+                let effectiveBaseline = log.baselineAtTime != 0 ? Int(log.baselineAtTime) : baseline
+                if Int(log.count) < effectiveBaseline {
                     count += 1
                 } else {
                     break
@@ -84,7 +84,7 @@ struct AchievementService {
         let today = cal.startOfDay(for: Date())
         let total = (0..<7).reduce(0) { sum, offset in
             guard let date = cal.date(byAdding: .day, value: -offset, to: today) else { return sum }
-            let count = logs.first(where: { $0.date == date })?.count ?? 0
+            let count = Int(logs.first(where: { $0.date == date })?.count ?? 0)
             return sum + count
         }
         return Double(total) / 7.0
