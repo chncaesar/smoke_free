@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreData
-import WidgetKit
 
 struct LoggingView: View {
     @FetchRequest(sortDescriptors: [SortDescriptor(\SmokingLog.date, order: .reverse)]) private var logs: FetchedResults<SmokingLog>
@@ -10,34 +9,20 @@ struct LoggingView: View {
     @StateObject private var vm = LoggingViewModel()
     @State private var feedbackText: String? = nil
 
-    private var baseline: Int { Int(profiles.first?.cigarettesPerDayBefore ?? Int32(0)) }
-    private var yesterdayLog: SmokingLog? {
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1,
-                                              to: Calendar.current.startOfDay(for: Date()))!
-        return logs.first(where: { ($0.date ?? Date()) == yesterday })
-    }
-
     var body: some View {
         NavigationView {
             List {
                 // 今日记录区
                 Section("今天") {
                     DailyLogEntryView(vm: vm, feedbackText: feedbackText, onSave: {
-                        vm.save(context: context, profile: profiles.first)
-                        if let profile = profiles.first {
-                            var allLogs = logs.map { $0 }
-                            if let today = vm.todayLog, !allLogs.contains(where: { $0.objectID == today.objectID }) {
-                                allLogs.append(today)
-                            }
-                            AchievementService.evaluateAndAward(
-                                profile: profile, logs: allLogs, purchases: Array(purchases), context: context)
-                        }
-                        NotificationService.shared.cancelTodayReminderAndRescheduleTomorrow()
-                        WidgetCenter.shared.reloadAllTimelines()
                         withAnimation {
-                            feedbackText = vm.feedbackMessage(
-                                baseline: baseline,
-                                yesterdayCount: yesterdayLog.map { Int($0.count) }
+                            feedbackText = vm.saveAndProcess(
+                                context: context,
+                                profile: profiles.first,
+                                logs: Array(logs),
+                                purchases: Array(purchases),
+                                baseline: vm.baseline(from: Array(profiles)),
+                                yesterdayCount: vm.yesterdayCount(from: Array(logs))
                             )
                         }
                     })
@@ -51,17 +36,14 @@ struct LoggingView: View {
                             LogRowView(log: log)
                         }
                         .onDelete { indexSet in
-                            for i in indexSet {
-                                context.delete(recent[i])
-                            }
-                            try? context.save()
+                            vm.deleteLogs(indexSet.map { recent[$0] }, context: context)
                         }
                     }
                 }
             }
             .navigationTitle("记录")
             .onAppear { vm.load(from: Array(logs)) }
-            .onChange(of: logs.count) { _ in vm.load(from: Array(logs)) }
+            .onChange(of: SmokingLog.changeToken(for: logs)) { _ in vm.load(from: Array(logs)) }
         }
         .navigationViewStyle(.stack)
     }
@@ -70,7 +52,7 @@ struct LoggingView: View {
 // MARK: - 今日记录输入
 
 private struct DailyLogEntryView: View {
-    let vm: LoggingViewModel
+    @ObservedObject var vm: LoggingViewModel
     let feedbackText: String?
     let onSave: () -> Void
 
@@ -97,10 +79,7 @@ private struct DailyLogEntryView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            TextField("备注（可选）", text: Binding(
-                get: { vm.notes },
-                set: { vm.notes = $0 }
-            ))
+            TextField("备注（可选）", text: $vm.notes)
             .textFieldStyle(.roundedBorder)
 
             Button(action: onSave) {
@@ -132,7 +111,7 @@ private struct DailyLogEntryView: View {
 // MARK: - 历史行
 
 private struct LogRowView: View {
-    let log: SmokingLog
+    @ObservedObject var log: SmokingLog
 
     var body: some View {
         HStack {

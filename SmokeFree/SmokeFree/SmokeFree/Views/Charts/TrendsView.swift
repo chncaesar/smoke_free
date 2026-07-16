@@ -9,8 +9,6 @@ struct TrendsView: View {
     @FetchRequest(sortDescriptors: []) private var profiles: FetchedResults<UserProfile>
     @StateObject private var vm = ChartsViewModel()
 
-    private var baseline: Int { Int(profiles.first?.cigarettesPerDayBefore ?? Int32(0)) }
-
     var body: some View {
         ScrollView {
             if logs.isEmpty && purchases.isEmpty {
@@ -32,7 +30,7 @@ struct TrendsView: View {
                 VStack(spacing: 20) {
                     Picker("时间范围", selection: Binding(
                         get: { vm.selectedWindow },
-                        set: { vm.selectedWindow = $0; reload() }
+                        set: { vm.selectWindow($0, logs: Array(logs), purchases: Array(purchases), profiles: Array(profiles)) }
                     )) {
                         ForEach(ChartsViewModel.Window.allCases, id: \.self) { Text($0.rawValue) }
                     }
@@ -50,10 +48,8 @@ struct TrendsView: View {
                             if vm.baselineDailyCount > 0 {
                                 Text("基准 \(vm.baselineDailyCount) 支")
                                     .font(.caption).foregroundStyle(.secondary)
-                                let pct = vm.avgCigarettes < Double(vm.baselineDailyCount)
-                                    ? Int((1 - vm.avgCigarettes / Double(vm.baselineDailyCount)) * 100) : 0
-                                if pct > 0 {
-                                    Text("↓ \(pct)%").font(.caption.bold()).foregroundStyle(.green)
+                                if let reductionPercentText = vm.reductionPercentText {
+                                    Text(reductionPercentText).font(.caption.bold()).foregroundStyle(.green)
                                 }
                             }
                         }
@@ -83,13 +79,9 @@ struct TrendsView: View {
             }
         }
         .navigationTitle("趋势")
-        .onAppear { reload() }
-        .onChange(of: logs.count) { _ in reload() }
-        .onChange(of: purchases.count) { _ in reload() }
-    }
-
-    private func reload() {
-        vm.load(logs: Array(logs), purchases: Array(purchases), baseline: baseline)
+        .onAppear { vm.load(logs: Array(logs), purchases: Array(purchases), profiles: Array(profiles)) }
+        .onChange(of: SmokingLog.changeToken(for: logs)) { _ in vm.load(logs: Array(logs), purchases: Array(purchases), profiles: Array(profiles)) }
+        .onChange(of: purchases.count) { _ in vm.load(logs: Array(logs), purchases: Array(purchases), profiles: Array(profiles)) }
     }
 }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AddPurchaseView: View {
-    let vm: PurchaseViewModel
+    @ObservedObject var vm: PurchaseViewModel
     let onAdd: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -10,10 +10,7 @@ struct AddPurchaseView: View {
         NavigationView {
             Form {
                 Section("香烟信息") {
-                    TextField("品牌名称", text: Binding(
-                        get: { vm.newBrand },
-                        set: { vm.newBrand = $0 }
-                    ))
+                    TextField("品牌名称", text: $vm.newBrand)
 
                     Stepper(
                         "购买 \(vm.newQuantity) 包",
@@ -40,7 +37,7 @@ struct AddPurchaseView: View {
                     HStack {
                         Text("合计")
                         Spacer()
-                        Text("¥\(String(format: "%.1f", Double(vm.newQuantity) * vm.newPricePerPack))")
+                        Text(vm.newTotalCostText)
                             .foregroundStyle(.red)
                     }
                 }
@@ -51,10 +48,7 @@ struct AddPurchaseView: View {
                         set: { vm.newDate = $0 }
                     ), in: ...Date(), displayedComponents: [.date])
 
-                    TextField("备注（可选）", text: Binding(
-                        get: { vm.newNotes },
-                        set: { vm.newNotes = $0 }
-                    ))
+                    TextField("备注（可选）", text: $vm.newNotes)
                 }
             }
             .navigationTitle("添加购烟记录")

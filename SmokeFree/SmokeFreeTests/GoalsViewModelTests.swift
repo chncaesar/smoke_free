@@ -1,14 +1,22 @@
 import Testing
 import Foundation
-import SwiftData
+import CoreData
 @testable import SmokeFree
 
 struct GoalsViewModelTests {
 
+    private func makeContext() -> NSManagedObjectContext {
+        let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
+        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.loadPersistentStores { _, _ in }
+        return container.viewContext
+    }
+
     // MARK: - checkCompletion — 按天数
 
     @Test func checkCompletion_byDays_marksGoalComplete() {
-        let goal = Goal(title: "坚持一周", reward: "买本书", targetDays: 7)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "坚持一周", reward: "买本书", targetDays: 7)
         let vm = GoalsViewModel()
 
         vm.checkCompletion(goals: [goal], streakDays: 7, moneySaved: 0)
@@ -18,7 +26,8 @@ struct GoalsViewModelTests {
     }
 
     @Test func checkCompletion_byDays_doesNotComplete_whenBelowTarget() {
-        let goal = Goal(title: "坚持一周", reward: "买本书", targetDays: 7)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "坚持一周", reward: "买本书", targetDays: 7)
         let vm = GoalsViewModel()
 
         vm.checkCompletion(goals: [goal], streakDays: 6, moneySaved: 0)
@@ -30,7 +39,8 @@ struct GoalsViewModelTests {
     // MARK: - checkCompletion — 按金额
 
     @Test func checkCompletion_byMoney_marksGoalComplete() {
-        let goal = Goal(title: "存够电影钱", reward: "看电影", targetDays: 999, targetMoneySaved: 50.0)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "存够电影钱", reward: "看电影", targetDays: 999, targetMoneySaved: 50.0)
         let vm = GoalsViewModel()
 
         vm.checkCompletion(goals: [goal], streakDays: 0, moneySaved: 50.0)
@@ -39,7 +49,8 @@ struct GoalsViewModelTests {
     }
 
     @Test func checkCompletion_byMoney_doesNotComplete_whenBelowTarget() {
-        let goal = Goal(title: "存够电影钱", reward: "看电影", targetDays: 999, targetMoneySaved: 50.0)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "存够电影钱", reward: "看电影", targetDays: 999, targetMoneySaved: 50.0)
         let vm = GoalsViewModel()
 
         vm.checkCompletion(goals: [goal], streakDays: 0, moneySaved: 49.9)
@@ -50,7 +61,8 @@ struct GoalsViewModelTests {
     // MARK: - checkCompletion — 已完成目标不再处理
 
     @Test func checkCompletion_skips_alreadyCompletedGoals() {
-        let goal = Goal(title: "已完成", reward: "奖励", targetDays: 1)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "已完成", reward: "奖励", targetDays: 1)
         goal.isCompleted = true
         let originalDate = Date().addingTimeInterval(-3600)
         goal.completedAt = originalDate
@@ -65,9 +77,10 @@ struct GoalsViewModelTests {
     // MARK: - activeGoals / completedGoals
 
     @Test func activeGoals_returnsOnlyIncomplete_sortedBySortOrder() {
-        let g1 = Goal(title: "目标A", reward: "奖励A", targetDays: 7, sortOrder: 2)
-        let g2 = Goal(title: "目标B", reward: "奖励B", targetDays: 14, sortOrder: 1)
-        let g3 = Goal(title: "目标C", reward: "奖励C", targetDays: 30)
+        let context = makeContext()
+        let g1 = Goal(context: context, title: "目标A", reward: "奖励A", targetDays: 7, sortOrder: 2)
+        let g2 = Goal(context: context, title: "目标B", reward: "奖励B", targetDays: 14, sortOrder: 1)
+        let g3 = Goal(context: context, title: "目标C", reward: "奖励C", targetDays: 30)
         g3.isCompleted = true
 
         let vm = GoalsViewModel()
@@ -79,15 +92,16 @@ struct GoalsViewModelTests {
     }
 
     @Test func completedGoals_returnsOnlyCompleted_sortedByCompletedAtDesc() {
-        let g1 = Goal(title: "早完成", reward: "奖励", targetDays: 1)
+        let context = makeContext()
+        let g1 = Goal(context: context, title: "早完成", reward: "奖励", targetDays: 1)
         g1.isCompleted = true
         g1.completedAt = Date().addingTimeInterval(-7200) // 2 小时前
 
-        let g2 = Goal(title: "晚完成", reward: "奖励", targetDays: 3)
+        let g2 = Goal(context: context, title: "晚完成", reward: "奖励", targetDays: 3)
         g2.isCompleted = true
         g2.completedAt = Date().addingTimeInterval(-3600) // 1 小时前
 
-        let g3 = Goal(title: "未完成", reward: "奖励", targetDays: 7)
+        let g3 = Goal(context: context, title: "未完成", reward: "奖励", targetDays: 7)
 
         let vm = GoalsViewModel()
         let completed = vm.completedGoals(from: [g1, g2, g3])
@@ -127,7 +141,8 @@ struct GoalsViewModelTests {
 
     @Test func checkCompletion_eitherConditionSuffices() {
         // 只有金额条件满足（天数未达到）
-        let goal = Goal(title: "复合目标", reward: "奖励", targetDays: 30, targetMoneySaved: 50.0)
+        let context = makeContext()
+        let goal = Goal(context: context, title: "复合目标", reward: "奖励", targetDays: 30, targetMoneySaved: 50.0)
         let vm = GoalsViewModel()
 
         vm.checkCompletion(goals: [goal], streakDays: 5, moneySaved: 100.0)

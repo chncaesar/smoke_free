@@ -6,13 +6,51 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0451245DC9C49EECC24ABA35 /* UserProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE168473BC022A7CD5E4A2C1 /* UserProfileTests.swift */; };
+		0B6D7A8E5C924B31A8E4F0C2 /* DashboardViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6D7A8D5C924B31A8E4F0C2 /* DashboardViewTests.swift */; };
+		2DAF6973FDB0E9044BCED67C /* PurchaseViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A9791939707A1861D0B3E37 /* PurchaseViewModelTests.swift */; };
+		588BF830E1DD860F36485785 /* DashboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57FCD04B59E5B04C6CCA0F3D /* DashboardViewModelTests.swift */; };
+		5AC024F974B285B40CC848BC /* AchievementServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEEA4AFE368E9E4E07079762 /* AchievementServiceTests.swift */; };
+		5F8B0D2C9E714A6CB3F04D1A /* LoggingViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B0D2B9E714A6CB3F04D1A /* LoggingViewTests.swift */; };
+		64A3E8C2B7D34F5A9C01E2D3 /* SmokingLogChangeTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A3E8C1B7D34F5A9C01E2D3 /* SmokingLogChangeTokenTests.swift */; };
+		836CA9C177F6811B42FA4EFB /* GoalsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782EE5C4BD59DC98B43CA62C /* GoalsViewModelTests.swift */; };
+		9C0E4F1A7B6D4E23A5C8D901 /* GoalsViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0E4F197B6D4E23A5C8D901 /* GoalsViewTests.swift */; };
+		C2A4E6B89D0F4C71B3E5A902 /* HealthTimelineViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A4E6B79D0F4C71B3E5A902 /* HealthTimelineViewTests.swift */; };
+		D9FE2BE1FD8A68BDD0CC02F7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 177EF598D88A32D7F8EC549A /* Foundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		13891E05E5D13AB656BFB2AF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3045E9B52F976B1D0038C0CA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3045E9BC2F976B1D0038C0CA;
+			remoteInfo = SmokeFree;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		177EF598D88A32D7F8EC549A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		0B6D7A8D5C924B31A8E4F0C2 /* DashboardViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DashboardViewTests.swift; sourceTree = "<group>"; };
 		3045E9BD2F976B1D0038C0CA /* SmokeFree.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmokeFree.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		50DEFF350765900F1B88C275 /* SmokeFreeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmokeFreeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		57FCD04B59E5B04C6CCA0F3D /* DashboardViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DashboardViewModelTests.swift; sourceTree = "<group>"; };
+		5F8B0D2B9E714A6CB3F04D1A /* LoggingViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoggingViewTests.swift; sourceTree = "<group>"; };
+		64A3E8C1B7D34F5A9C01E2D3 /* SmokingLogChangeTokenTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokingLogChangeTokenTests.swift; sourceTree = "<group>"; };
+		782EE5C4BD59DC98B43CA62C /* GoalsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsViewModelTests.swift; sourceTree = "<group>"; };
+		7A9791939707A1861D0B3E37 /* PurchaseViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PurchaseViewModelTests.swift; sourceTree = "<group>"; };
+		9C0E4F197B6D4E23A5C8D901 /* GoalsViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalsViewTests.swift; sourceTree = "<group>"; };
+		BE168473BC022A7CD5E4A2C1 /* UserProfileTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserProfileTests.swift; sourceTree = "<group>"; };
+		C2A4E6B79D0F4C71B3E5A902 /* HealthTimelineViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthTimelineViewTests.swift; sourceTree = "<group>"; };
+		DEEA4AFE368E9E4E07079762 /* AchievementServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AchievementServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		3045E9BF2F976B1D0038C0CA /* SmokeFree */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = SmokeFree;
 			sourceTree = "<group>";
 		};
@@ -26,6 +64,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		844A376EF268738C01911C80 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9FE2BE1FD8A68BDD0CC02F7 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -34,6 +80,8 @@
 			children = (
 				3045E9BF2F976B1D0038C0CA /* SmokeFree */,
 				3045E9BE2F976B1D0038C0CA /* Products */,
+				BDF2E59335EBEFD72DFA443D /* Frameworks */,
+				35DC60434A42F464578AEB3F /* SmokeFreeTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,13 +89,66 @@
 			isa = PBXGroup;
 			children = (
 				3045E9BD2F976B1D0038C0CA /* SmokeFree.app */,
+				50DEFF350765900F1B88C275 /* SmokeFreeTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		35DC60434A42F464578AEB3F /* SmokeFreeTests */ = {
+			isa = PBXGroup;
+			children = (
+				DEEA4AFE368E9E4E07079762 /* AchievementServiceTests.swift */,
+				57FCD04B59E5B04C6CCA0F3D /* DashboardViewModelTests.swift */,
+				0B6D7A8D5C924B31A8E4F0C2 /* DashboardViewTests.swift */,
+				782EE5C4BD59DC98B43CA62C /* GoalsViewModelTests.swift */,
+				9C0E4F197B6D4E23A5C8D901 /* GoalsViewTests.swift */,
+				C2A4E6B79D0F4C71B3E5A902 /* HealthTimelineViewTests.swift */,
+				5F8B0D2B9E714A6CB3F04D1A /* LoggingViewTests.swift */,
+				7A9791939707A1861D0B3E37 /* PurchaseViewModelTests.swift */,
+				64A3E8C1B7D34F5A9C01E2D3 /* SmokingLogChangeTokenTests.swift */,
+				BE168473BC022A7CD5E4A2C1 /* UserProfileTests.swift */,
+			);
+			name = SmokeFreeTests;
+			path = ../SmokeFreeTests;
+			sourceTree = "<group>";
+		};
+		AEFD53BE3ED090ED237380BA /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				177EF598D88A32D7F8EC549A /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		BDF2E59335EBEFD72DFA443D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				AEFD53BE3ED090ED237380BA /* iOS */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		06EA8539943912E2B717A0FD /* SmokeFreeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F43EAC74519EEE2E66DD22AC /* Build configuration list for PBXNativeTarget "SmokeFreeTests" */;
+			buildPhases = (
+				728495C42B404F62D989D246 /* Sources */,
+				844A376EF268738C01911C80 /* Frameworks */,
+				5C3FE0D8F9F3C245EB1C0917 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				60BE47F57BE50C5FADC3A0B0 /* PBXTargetDependency */,
+			);
+			name = SmokeFreeTests;
+			productName = SmokeFreeTests;
+			productReference = 50DEFF350765900F1B88C275 /* SmokeFreeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		3045E9BC2F976B1D0038C0CA /* SmokeFree */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3045E9C82F976B1D0038C0CA /* Build configuration list for PBXNativeTarget "SmokeFree" */;
@@ -64,8 +165,6 @@
 				3045E9BF2F976B1D0038C0CA /* SmokeFree */,
 			);
 			name = SmokeFree;
-			packageProductDependencies = (
-			);
 			productName = SmokeFree;
 			productReference = 3045E9BD2F976B1D0038C0CA /* SmokeFree.app */;
 			productType = "com.apple.product-type.application";
@@ -80,6 +179,9 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					06EA8539943912E2B717A0FD = {
+						TestTargetID = 3045E9BC2F976B1D0038C0CA;
+					};
 					3045E9BC2F976B1D0038C0CA = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -100,12 +202,20 @@
 			projectRoot = "";
 			targets = (
 				3045E9BC2F976B1D0038C0CA /* SmokeFree */,
+				06EA8539943912E2B717A0FD /* SmokeFreeTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		3045E9BB2F976B1D0038C0CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5C3FE0D8F9F3C245EB1C0917 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +232,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		728495C42B404F62D989D246 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5AC024F974B285B40CC848BC /* AchievementServiceTests.swift in Sources */,
+				588BF830E1DD860F36485785 /* DashboardViewModelTests.swift in Sources */,
+				0B6D7A8E5C924B31A8E4F0C2 /* DashboardViewTests.swift in Sources */,
+				836CA9C177F6811B42FA4EFB /* GoalsViewModelTests.swift in Sources */,
+				9C0E4F1A7B6D4E23A5C8D901 /* GoalsViewTests.swift in Sources */,
+				C2A4E6B89D0F4C71B3E5A902 /* HealthTimelineViewTests.swift in Sources */,
+				5F8B0D2C9E714A6CB3F04D1A /* LoggingViewTests.swift in Sources */,
+				2DAF6973FDB0E9044BCED67C /* PurchaseViewModelTests.swift in Sources */,
+				64A3E8C2B7D34F5A9C01E2D3 /* SmokingLogChangeTokenTests.swift in Sources */,
+				0451245DC9C49EECC24ABA35 /* UserProfileTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		60BE47F57BE50C5FADC3A0B0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SmokeFree;
+			target = 3045E9BC2F976B1D0038C0CA /* SmokeFree */;
+			targetProxy = 13891E05E5D13AB656BFB2AF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		3045E9C62F976B1D0038C0CA /* Debug */ = {
@@ -160,7 +296,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -225,7 +360,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -253,14 +387,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SmokeFree/SmokeFree.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S394MV4B4G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SmokeFree 需要读取健康数据，以显示您的戒烟进度。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SmokeFree 需要写入健康数据，以记录您的无烟状态。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -287,14 +424,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SmokeFree/SmokeFree.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S394MV4B4G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SmokeFree 需要读取健康数据，以显示您的戒烟进度。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SmokeFree 需要写入健康数据，以记录您的无烟状态。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -316,6 +456,45 @@
 			};
 			name = Release;
 		};
+		637AA81F5D83274FC076FE13 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S394MV4B4G;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.8;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.smoke-free.app.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SmokeFree.app/SmokeFree";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		8CAB5F2973E21317BC5B4D18 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S394MV4B4G;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.8;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.smoke-free.app.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SmokeFree.app/SmokeFree";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -333,6 +512,15 @@
 			buildConfigurations = (
 				3045E9C92F976B1D0038C0CA /* Debug */,
 				3045E9CA2F976B1D0038C0CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F43EAC74519EEE2E66DD22AC /* Build configuration list for PBXNativeTarget "SmokeFreeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				637AA81F5D83274FC076FE13 /* Release */,
+				8CAB5F2973E21317BC5B4D18 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -37,7 +37,21 @@ struct GoalsView: View {
                 if !active.isEmpty {
                     Section("进行中") {
                         ForEach(active, id: \.objectID) { goal in
-                            GoalRowView(goal: goal, profile: profile, logs: Array(logs), purchases: Array(purchases))
+                            GoalRowView(
+                                goal: goal,
+                                progressValue: vm.progressValue(
+                                    goal: goal,
+                                    profile: profile,
+                                    logs: Array(logs),
+                                    purchases: Array(purchases)
+                                ),
+                                progressText: vm.progressText(
+                                    goal: goal,
+                                    profile: profile,
+                                    logs: Array(logs),
+                                    purchases: Array(purchases)
+                                )
+                            )
                                 .contentShape(Rectangle())
                                 .onTapGesture { vm.startEditing(goal) }
                         }
@@ -50,7 +64,7 @@ struct GoalsView: View {
                 if !completed.isEmpty {
                     Section("已完成") {
                         ForEach(completed, id: \.objectID) { goal in
-                            GoalRowView(goal: goal, profile: profile, logs: Array(logs), purchases: Array(purchases))
+                            GoalRowView(goal: goal, progressValue: 1.0, progressText: nil)
                         }
                     }
                 }
@@ -75,19 +89,13 @@ struct GoalsView: View {
             }
             .onAppear { checkCompletion() }
             .onChange(of: goals.count) { _ in checkCompletion() }
-            .onChange(of: logs.count) { _ in checkCompletion() }
+            .onChange(of: SmokingLog.changeToken(for: logs)) { _ in checkCompletion() }
         }
         .navigationViewStyle(.stack)
     }
 
     private func checkCompletion() {
-        guard let profile else { return }
-        vm.checkCompletion(
-            goals: Array(goals),
-            streakDays: profile.actualStreakDays(logs: Array(logs)),
-            moneySaved: profile.moneySaved(logs: Array(logs), purchases: Array(purchases))
-        )
-        vm.hasActiveMoneyGoal = goals.contains { !$0.isCompleted && $0.targetMoneySaved > 0 }
+        vm.checkCompletion(profile: profile, goals: Array(goals), logs: Array(logs), purchases: Array(purchases))
     }
 }
 
@@ -95,19 +103,8 @@ struct GoalsView: View {
 
 private struct GoalRowView: View {
     let goal: Goal
-    let profile: UserProfile?
-    let logs: [SmokingLog]
-    let purchases: [PurchaseRecord]
-
-    var progressValue: Double {
-        guard let profile, !goal.isCompleted else { return goal.isCompleted ? 1.0 : 0.0 }
-        if goal.targetMoneySaved > 0 {
-            let saved = profile.moneySaved(logs: logs, purchases: purchases)
-            return max(0, min(saved / goal.targetMoneySaved, 1.0))
-        }
-        let streak = profile.actualStreakDays(logs: logs)
-        return min(Double(streak) / Double(Int(goal.targetDays)), 1.0)
-    }
+    let progressValue: Double
+    let progressText: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -136,18 +133,10 @@ private struct GoalRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if !goal.isCompleted, let profile {
-                    if goal.targetMoneySaved > 0 {
-                        let saved = profile.moneySaved(logs: logs, purchases: purchases)
-                        Text("\(saved < 0 ? "-" : "")¥\(String(format: "%.0f", abs(saved))) / ¥\(String(format: "%.0f", goal.targetMoneySaved))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let streak = profile.actualStreakDays(logs: logs)
-                        Text("\(streak) / \(Int(goal.targetDays)) 天")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                if let progressText {
+                    Text(progressText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

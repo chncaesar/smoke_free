@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreData
+import WidgetKit
 
 final class LoggingViewModel: ObservableObject {
     @Published var todayCount: Int = 0
@@ -21,6 +22,16 @@ final class LoggingViewModel: ObservableObject {
             notes = ""
             hasLoggedToday = false
         }
+    }
+
+    func baseline(from profiles: [UserProfile]) -> Int {
+        Int(profiles.first?.cigarettesPerDayBefore ?? Int32(0))
+    }
+
+    func yesterdayCount(from logs: [SmokingLog]) -> Int? {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1,
+                                              to: Calendar.current.startOfDay(for: Date()))!
+        return logs.first { ($0.date ?? Date()) == yesterday }.map { Int($0.count) }
     }
 
     func save(context: NSManagedObjectContext, profile: UserProfile?) {
@@ -46,12 +57,46 @@ final class LoggingViewModel: ObservableObject {
         try? context.save()
     }
 
+    /// 保存今日记录并执行后续副作用：评估成就、重排提醒、刷新小组件，返回激励文案。
+    func saveAndProcess(
+        context: NSManagedObjectContext,
+        profile: UserProfile?,
+        logs: [SmokingLog],
+        purchases: [PurchaseRecord],
+        baseline: Int,
+        yesterdayCount: Int?
+    ) -> String? {
+        save(context: context, profile: profile)
+
+        if let profile = profile {
+            var allLogs = logs
+            if let today = todayLog, !allLogs.contains(where: { $0.objectID == today.objectID }) {
+                allLogs.append(today)
+            }
+            AchievementService.evaluateAndAward(
+                profile: profile, logs: allLogs, purchases: purchases, context: context)
+        }
+
+        NotificationService.shared.cancelTodayReminderAndRescheduleTomorrow()
+        WidgetCenter.shared.reloadAllTimelines()
+
+        return feedbackMessage(baseline: baseline, yesterdayCount: yesterdayCount)
+    }
+
     /// 最近 30 天的记录（不含今天的空记录）
     func recentLogs(from logs: [SmokingLog]) -> [SmokingLog] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         return logs
             .filter { ($0.date ?? .distantPast) >= Calendar.current.startOfDay(for: cutoff) }
             .sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+    }
+
+    /// 删除指定的历史记录
+    func deleteLogs(_ logsToDelete: [SmokingLog], context: NSManagedObjectContext) {
+        for log in logsToDelete {
+            context.delete(log)
+        }
+        try? context.save()
     }
 
     // MARK: - 保存后正向反馈

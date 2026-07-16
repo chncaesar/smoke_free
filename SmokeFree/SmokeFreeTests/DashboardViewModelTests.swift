@@ -34,7 +34,8 @@ struct DashboardViewModelTests {
         let vm = DashboardViewModel()
         vm.update(from: profile, logs: [log])
 
-        #expect(vm.streakDays == 5)
+        // 宽松连续天数：戒烟当天也算 1 天，5 天前戒烟 → 今天起回溯共 6 天
+        #expect(vm.streakDays == 6)
         // 少抽 10 支 × (25 / 20) = 12.5 元
         #expect(vm.moneySaved > 0)
     }
@@ -42,7 +43,7 @@ struct DashboardViewModelTests {
     // MARK: - 里程碑进度
 
     @Test func update_25SecondsIn_firstMilestoneIsNext() {
-        // 刚戒烟 25 秒，streakDays=0，下一个里程碑应该是 "day1"（需要 1 天）
+        // 刚戒烟 25 秒，宽松连续天数下当天已算 streak=1，下一个里程碑是 "3days"（需要 3 天）
         let context = makeContext()
         let quitDate = Date().addingTimeInterval(-25)
         let profile = UserProfile(
@@ -55,12 +56,12 @@ struct DashboardViewModelTests {
         let vm = DashboardViewModel()
         vm.update(from: profile, logs: [])
 
-        #expect(vm.nextMilestone?.id == "day1")
+        #expect(vm.nextMilestone?.id == "3days")
     }
 
     @Test func update_progressBetweenZeroAndOne() {
         let context = makeContext()
-        let quitDate = Date().addingTimeInterval(-600) // 10 分钟，streakDays=0
+        let quitDate = Date().addingTimeInterval(-86400) // 1 天前，streakDays=2（含今天）
         let profile = UserProfile(
             context: context,
             quitDate: quitDate,

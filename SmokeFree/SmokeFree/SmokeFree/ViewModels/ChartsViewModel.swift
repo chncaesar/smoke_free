@@ -27,6 +27,21 @@ final class ChartsViewModel: ObservableObject {
     @Published private(set) var avgCigarettes: Double = 0
     @Published private(set) var baselineDailyCount: Int = 0
 
+    var reductionPercentText: String? {
+        guard baselineDailyCount > 0, avgCigarettes < Double(baselineDailyCount) else { return nil }
+        let pct = Int((1 - avgCigarettes / Double(baselineDailyCount)) * 100)
+        return pct > 0 ? "↓ \(pct)%" : nil
+    }
+
+    func load(logs: [SmokingLog], purchases: [PurchaseRecord], profiles: [UserProfile]) {
+        load(logs: logs, purchases: purchases, baseline: baseline(from: profiles))
+    }
+
+    func selectWindow(_ window: Window, logs: [SmokingLog], purchases: [PurchaseRecord], profiles: [UserProfile]) {
+        selectedWindow = window
+        load(logs: logs, purchases: purchases, profiles: profiles)
+    }
+
     func load(logs: [SmokingLog], purchases: [PurchaseRecord], baseline: Int = 0) {
         baselineDailyCount = baseline
         let days = selectedWindow == .week ? 7 : 30
@@ -60,5 +75,9 @@ final class ChartsViewModel: ObservableObject {
         spendData = dates.map { d in
             SpendPoint(date: d, amount: spendByDate[d] ?? 0)
         }
+    }
+
+    private func baseline(from profiles: [UserProfile]) -> Int {
+        Int(profiles.first?.cigarettesPerDayBefore ?? Int32(0))
     }
 }

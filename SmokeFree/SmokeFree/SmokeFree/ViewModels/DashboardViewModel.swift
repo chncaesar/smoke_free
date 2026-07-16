@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreData
 import WidgetKit
 
 final class DashboardViewModel: ObservableObject {
@@ -118,6 +119,40 @@ final class DashboardViewModel: ObservableObject {
             )
             return sum + Double(Int(log.count)) * perCig
         }
+    }
+
+    func processAfterUpdate(profile: UserProfile, logs: [SmokingLog], purchases: [PurchaseRecord], context: NSManagedObjectContext) {
+        AchievementService.evaluateAndAward(profile: profile, logs: logs, purchases: purchases, context: context)
+        if todayCount == 0 {
+            Task { await HealthKitService.shared.recordSmokeFreeToday() }
+        }
+    }
+
+    func ensureTodayReminderIfNeeded(hasLoggedToday: Bool) {
+        NotificationService.shared.ensureTodayReminderIfNeeded(hasLoggedToday: hasLoggedToday)
+    }
+
+    func exportData(context: NSManagedObjectContext) throws -> URL {
+        try DataExportService.exportData(context: context)
+    }
+
+    func saveBaselineChanges(
+        profile: UserProfile,
+        logs: [SmokingLog],
+        context: NSManagedObjectContext,
+        newBaseline: Int,
+        newPrice: Double,
+        newPerPack: Int
+    ) {
+        for log in logs where log.baselineAtTime == 0 || log.pricePerPackAtTime == 0 || log.cigarettesPerPackAtTime == 0 {
+            if log.baselineAtTime == 0 { log.baselineAtTime = Int32(profile.cigarettesPerDayBefore) }
+            if log.pricePerPackAtTime == 0 { log.pricePerPackAtTime = profile.pricePerPack }
+            if log.cigarettesPerPackAtTime == 0 { log.cigarettesPerPackAtTime = Int32(profile.cigarettesPerPack) }
+        }
+        profile.cigarettesPerDayBefore = Int32(newBaseline)
+        profile.pricePerPack = newPrice
+        profile.cigarettesPerPack = Int32(newPerPack)
+        try? context.save()
     }
 
     /// 当前有效的每支烟价格（与 moneySaved 中的 perCigPrice 三级优先级一致）

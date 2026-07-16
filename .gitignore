@@ -28,3 +28,5 @@ LocalConfig.xcconfig
 *.jpeg
 *.png
 !Assets.xcassets/**
+!**/Assets.xcassets/**
+.superpowers/

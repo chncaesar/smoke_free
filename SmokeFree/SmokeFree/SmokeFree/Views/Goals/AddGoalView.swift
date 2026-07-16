@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AddGoalView: View {
-    let vm: GoalsViewModel
+    @ObservedObject var vm: GoalsViewModel
     let onAdd: () -> Void
     var isEditing: Bool = false
 
@@ -11,10 +11,7 @@ struct AddGoalView: View {
         NavigationView {
             Form {
                 Section("目标") {
-                    TextField("例：连续控烟一周", text: Binding(
-                        get: { vm.newTitle },
-                        set: { vm.newTitle = $0 }
-                    ))
+                    TextField("例：连续控烟一周", text: $vm.newTitle)
                 }
 
                 Section("达成条件") {
@@ -56,10 +53,7 @@ struct AddGoalView: View {
                 }
 
                 Section("奖励") {
-                    TextField("例：买一本新书", text: Binding(
-                        get: { vm.newReward },
-                        set: { vm.newReward = $0 }
-                    ))
+                    TextField("例：买一本新书", text: $vm.newReward)
                 }
             }
             .navigationTitle(isEditing ? "编辑目标" : "添加目标")

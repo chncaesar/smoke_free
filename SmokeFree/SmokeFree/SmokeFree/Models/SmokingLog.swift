@@ -31,4 +31,20 @@ public class SmokingLog: NSManagedObject {
         if createdAt == nil { createdAt = Date() }
         if date == nil { date = Calendar.current.startOfDay(for: Date()) }
     }
+
+    static func changeToken<S: Sequence>(for logs: S) -> String where S.Element == SmokingLog {
+        logs.map { log in
+            [
+                log.objectID.uriRepresentation().absoluteString,
+                String(log.date?.timeIntervalSince1970 ?? 0),
+                String(log.count),
+                log.notes ?? "",
+                String(log.baselineAtTime),
+                String(log.pricePerPackAtTime),
+                String(log.cigarettesPerPackAtTime)
+            ].joined(separator: ":")
+        }
+        .sorted()
+        .joined(separator: "|")
+    }
 }

@@ -31,15 +31,12 @@ struct HealthTimelineView: View {
         .navigationTitle("控烟里程碑")
         .listStyle(.insetGrouped)
         .onAppear { reload() }
-        .onChange(of: logs.count) { _ in reload() }
+        .onChange(of: SmokingLog.changeToken(for: logs)) { _ in reload() }
     }
 
     private func reload() {
         guard let profile = profiles.first else { return }
-        vm.load(
-            streakDays: profile.actualStreakDays(logs: Array(logs)),
-            profile: profile
-        )
+        vm.load(profile: profile, logs: Array(logs))
     }
 }
 

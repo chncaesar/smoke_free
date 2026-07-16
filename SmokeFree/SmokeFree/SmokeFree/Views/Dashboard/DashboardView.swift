@@ -106,11 +106,11 @@ struct DashboardView: View {
                 Text(exportError ?? "")
             }
             .onAppear { updateVM() }
-            .onChange(of: logs.count) { _ in updateVM() }
+            .onChange(of: SmokingLog.changeToken(for: logs)) { _ in updateVM() }
             .onChange(of: scenePhase) { newPhase in
                 if newPhase == .active {
                     updateVM()
-                    NotificationService.shared.ensureTodayReminderIfNeeded(hasLoggedToday: todayLog != nil)
+                    vm.ensureTodayReminderIfNeeded(hasLoggedToday: todayLog != nil)
                 }
                 if newPhase == .background { try? context.save() }
             }
@@ -123,18 +123,15 @@ struct DashboardView: View {
         vm.update(from: profile, logs: Array(logs), purchases: Array(purchases))
         vm.updateReduction(todayLog: todayLog, profile: profile, purchases: Array(purchases), logs: Array(logs))
         vm.updateCost(profile: profile, logs: Array(logs), purchases: Array(purchases))
-        AchievementService.evaluateAndAward(profile: profile, logs: Array(logs), purchases: Array(purchases), context: context)
-        if vm.todayCount == 0 {
-            Task { await HealthKitService.shared.recordSmokeFreeToday() }
-        }
+        vm.processAfterUpdate(profile: profile, logs: Array(logs), purchases: Array(purchases), context: context)
     }
 
     private func exportData() {
         do {
-            exportDirURL = try DataExportService.exportData(context: context)
+            exportDirURL = try vm.exportData(context: context)
             showShareSheet = true
         } catch {
-            exportError = "导出失败：\(error.localizedDescription)"
+            exportError = "导出失败，请稍后重试。"
         }
     }
 }
@@ -296,6 +293,7 @@ private struct EditBaselineView: View {
     let context: NSManagedObjectContext
     let onSave: () -> Void
 
+    @StateObject private var vm = DashboardViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var newBaseline: Int
     @State private var newPrice: Double
@@ -354,15 +352,14 @@ private struct EditBaselineView: View {
     }
 
     private func applyChanges() {
-        for log in logs where log.baselineAtTime == 0 || log.pricePerPackAtTime == 0 || log.cigarettesPerPackAtTime == 0 {
-            if log.baselineAtTime == 0 { log.baselineAtTime = Int32(profile.cigarettesPerDayBefore) }
-            if log.pricePerPackAtTime == 0 { log.pricePerPackAtTime = profile.pricePerPack }
-            if log.cigarettesPerPackAtTime == 0 { log.cigarettesPerPackAtTime = Int32(profile.cigarettesPerPack) }
-        }
-        profile.cigarettesPerDayBefore = Int32(newBaseline)
-        profile.pricePerPack = newPrice
-        profile.cigarettesPerPack = Int32(newPerPack)
-        try? context.save()
+        vm.saveBaselineChanges(
+            profile: profile,
+            logs: logs,
+            context: context,
+            newBaseline: newBaseline,
+            newPrice: newPrice,
+            newPerPack: newPerPack
+        )
     }
 }
 

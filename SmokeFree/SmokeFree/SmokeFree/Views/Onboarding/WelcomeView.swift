@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WelcomeView: View {
-    let vm: OnboardingViewModel
+    @ObservedObject var vm: OnboardingViewModel
 
     var body: some View {
         VStack(spacing: 32) {
@@ -21,10 +21,7 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
             }
 
-            TextField("你的名字（可选）", text: Binding(
-                get: { vm.name },
-                set: { vm.name = $0 }
-            ))
+            TextField("你的名字（可选）", text: $vm.name)
             .textFieldStyle(.roundedBorder)
             .padding(.horizontal, 40)
 

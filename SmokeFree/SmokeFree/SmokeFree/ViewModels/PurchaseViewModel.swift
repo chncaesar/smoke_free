@@ -16,6 +16,16 @@ final class PurchaseViewModel: ObservableObject {
         !newBrand.trimmingCharacters(in: .whitespaces).isEmpty && newQuantity > 0 && newPricePerPack > 0
     }
 
+    /// 新购烟表单的合计金额
+    var newTotalCost: Double {
+        Double(newQuantity) * newPricePerPack
+    }
+
+    /// 合计金额的展示文案
+    var newTotalCostText: String {
+        String(format: "¥%.1f", newTotalCost)
+    }
+
     func totalSpent(purchases: [PurchaseRecord]) -> Double {
         purchases.reduce(0) { $0 + $1.totalCost }
     }

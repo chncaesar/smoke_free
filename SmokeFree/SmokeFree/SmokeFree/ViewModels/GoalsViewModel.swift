@@ -43,6 +43,36 @@ final class GoalsViewModel: ObservableObject {
         }
     }
 
+    func checkCompletion(profile: UserProfile?, goals: [Goal], logs: [SmokingLog], purchases: [PurchaseRecord]) {
+        guard let profile else { return }
+        checkCompletion(
+            goals: goals,
+            streakDays: profile.actualStreakDays(logs: logs),
+            moneySaved: profile.moneySaved(logs: logs, purchases: purchases)
+        )
+        hasActiveMoneyGoal = goals.contains { !$0.isCompleted && $0.targetMoneySaved > 0 }
+    }
+
+    func progressValue(goal: Goal, profile: UserProfile?, logs: [SmokingLog], purchases: [PurchaseRecord]) -> Double {
+        guard let profile, !goal.isCompleted else { return goal.isCompleted ? 1.0 : 0.0 }
+        if goal.targetMoneySaved > 0 {
+            let saved = profile.moneySaved(logs: logs, purchases: purchases)
+            return max(0, min(saved / goal.targetMoneySaved, 1.0))
+        }
+        let streak = profile.actualStreakDays(logs: logs)
+        return min(Double(streak) / Double(Int(goal.targetDays)), 1.0)
+    }
+
+    func progressText(goal: Goal, profile: UserProfile?, logs: [SmokingLog], purchases: [PurchaseRecord]) -> String? {
+        guard let profile, !goal.isCompleted else { return nil }
+        if goal.targetMoneySaved > 0 {
+            let saved = profile.moneySaved(logs: logs, purchases: purchases)
+            return "\(saved < 0 ? "-" : "")¥\(String(format: "%.0f", abs(saved))) / ¥\(String(format: "%.0f", goal.targetMoneySaved))"
+        }
+        let streak = profile.actualStreakDays(logs: logs)
+        return "\(streak) / \(Int(goal.targetDays)) 天"
+    }
+
     func addGoal(context: NSManagedObjectContext, sortOrder: Int) {
         let goal = Goal(
             context: context,
