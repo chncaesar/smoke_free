@@ -99,6 +99,13 @@ final class LoggingViewModel: ObservableObject {
         try? context.save()
     }
 
+    /// 更新指定历史记录。日期和价格快照保持不变。
+    func updateLog(_ log: SmokingLog, count: Int, notes: String, context: NSManagedObjectContext) {
+        log.count = Int32(count)
+        log.notes = notes.isEmpty ? nil : notes
+        try? context.save()
+    }
+
     // MARK: - 保存后正向反馈
 
     /// 生成保存后的激励消息。baseline = cigarettesPerDayBefore，yesterdayCount 为 nil 表示昨天无记录。

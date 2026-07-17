@@ -8,6 +8,7 @@ struct LoggingView: View {
     @Environment(\.managedObjectContext) private var context
     @StateObject private var vm = LoggingViewModel()
     @State private var feedbackText: String? = nil
+    @State private var editingLog: SmokingLog?
 
     var body: some View {
         NavigationView {
@@ -33,7 +34,12 @@ struct LoggingView: View {
                 if !recent.isEmpty {
                     Section("最近 30 天") {
                         ForEach(recent, id: \.objectID) { log in
-                            LogRowView(log: log)
+                            Button {
+                                editingLog = log
+                            } label: {
+                                LogRowView(log: log)
+                            }
+                            .buttonStyle(.plain)
                         }
                         .onDelete { indexSet in
                             vm.deleteLogs(indexSet.map { recent[$0] }, context: context)
@@ -44,6 +50,19 @@ struct LoggingView: View {
             .navigationTitle("记录")
             .onAppear { vm.load(from: Array(logs)) }
             .onChange(of: SmokingLog.changeToken(for: logs)) { _ in vm.load(from: Array(logs)) }
+            .sheet(isPresented: Binding(
+                get: { editingLog != nil },
+                set: { isPresented in
+                    if !isPresented { editingLog = nil }
+                }
+            )) {
+                if let log = editingLog {
+                    EditSmokingLogView(log: log) { count, notes in
+                        vm.updateLog(log, count: count, notes: notes, context: context)
+                        editingLog = nil
+                    }
+                }
+            }
         }
         .navigationViewStyle(.stack)
     }
@@ -138,5 +157,58 @@ private struct LogRowView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - 历史记录编辑
+
+private struct EditSmokingLogView: View {
+    @ObservedObject var log: SmokingLog
+    let onSave: (Int, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var count: Int
+    @State private var notes: String
+
+    init(log: SmokingLog, onSave: @escaping (Int, String) -> Void) {
+        self.log = log
+        self.onSave = onSave
+        _count = State(initialValue: Int(log.count))
+        _notes = State(initialValue: log.notes ?? "")
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("日期") {
+                    Text(log.date ?? Date(), style: .date)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("记录") {
+                    Stepper(
+                        "吸烟 \(count) 支",
+                        value: $count,
+                        in: 0...200
+                    )
+
+                    TextField("备注（可选）", text: $notes)
+                }
+            }
+            .navigationTitle("编辑吸烟记录")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        onSave(count, notes)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
     }
 }
