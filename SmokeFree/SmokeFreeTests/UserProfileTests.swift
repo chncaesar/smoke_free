@@ -9,7 +9,7 @@ struct UserProfileTests {
 
     private func makeContext() -> NSManagedObjectContext {
         let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
-        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.persistentStoreDescriptions.first!.type = NSInMemoryStoreType
         container.loadPersistentStores { _, _ in }
         return container.viewContext
     }
@@ -53,6 +53,76 @@ struct UserProfileTests {
             cigarettesPerPack: 20
         )
         #expect(profile.streakDays == 0)
+    }
+
+    // MARK: - completedStreakDays
+
+    @Test func completedStreakDays_todayBelowBaseline_returnsZero() {
+        let context = makeContext()
+        let today = Calendar.current.startOfDay(for: Date())
+        let profile = UserProfile(
+            context: context,
+            quitDate: today,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: today, count: 14)
+        log.baselineAtTime = 15
+
+        #expect(profile.completedStreakDays(logs: [log]) == 0)
+    }
+
+    @Test func completedStreakDays_yesterdayBelowBaseline_returnsOne() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: yesterday, count: 14)
+        log.baselineAtTime = 15
+
+        #expect(profile.completedStreakDays(logs: [log]) == 1)
+    }
+
+    @Test func completedStreakDays_yesterdayMissingLog_countsAsSuccess() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+
+        #expect(profile.completedStreakDays(logs: []) == 1)
+    }
+
+    @Test func completedStreakDays_yesterdayAtBaseline_returnsZero() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: yesterday, count: 15)
+        log.baselineAtTime = 15
+
+        #expect(profile.completedStreakDays(logs: [log]) == 0)
     }
 
     // MARK: - moneySaved
@@ -104,6 +174,31 @@ struct UserProfileTests {
         )
         // TODO: 添加日志后验证：创建 count=0 的日志代表全天未吸烟
         #expect(profile.moneySaved(logs: [], purchases: []).isApproximatelyEqual(to: 0, tolerance: 0.5))
+    }
+
+    @Test func completedMoneySaved_excludesTodayInProgressLog() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 20,
+            pricePerPack: 20,
+            cigarettesPerPack: 20
+        )
+        let yesterdayLog = SmokingLog(context: context, date: yesterday, count: 0)
+        yesterdayLog.baselineAtTime = 20
+        yesterdayLog.pricePerPackAtTime = 20
+        yesterdayLog.cigarettesPerPackAtTime = 20
+        let todayLog = SmokingLog(context: context, date: today, count: 0)
+        todayLog.baselineAtTime = 20
+        todayLog.pricePerPackAtTime = 20
+        todayLog.cigarettesPerPackAtTime = 20
+
+        #expect(profile.moneySaved(logs: [yesterdayLog, todayLog]).isApproximatelyEqual(to: 40, tolerance: 0.01))
+        #expect(profile.completedMoneySaved(logs: [yesterdayLog, todayLog]).isApproximatelyEqual(to: 20, tolerance: 0.01))
     }
 }
 

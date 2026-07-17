@@ -9,17 +9,18 @@ struct AchievementServiceTests {
 
     private func makeContext() -> NSManagedObjectContext {
         let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
-        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.persistentStoreDescriptions.first!.type = NSInMemoryStoreType
         container.loadPersistentStores { _, _ in }
         return container.viewContext
     }
 
-    /// 创建连续 N 天（从今天往回）的日志，每天 count 低于 baseline
+    /// 创建连续 N 个已结束自然日（从昨天往回）的日志，每天 count 低于 baseline
     private func makeConsecutiveLogs(days: Int, count: Int = 10, context: NSManagedObjectContext) -> [SmokingLog] {
         let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
         var logs: [SmokingLog] = []
-        for offset in 0..<days {
-            let date = cal.date(byAdding: .day, value: -offset, to: Date())!
+        for offset in 1...days {
+            let date = cal.date(byAdding: .day, value: -offset, to: today)!
             let log = SmokingLog(context: context, date: date, count: count)
             log.baselineAtTime = 20
             log.pricePerPackAtTime = 25
@@ -152,17 +153,57 @@ struct AchievementServiceTests {
 
     // MARK: - 减量类徽章
 
-    @Test func awards_streak1Day_whenTodayBelowBaseline() throws {
+    @Test func awards_streak1Day_whenYesterdayBelowBaselineLegacyCase() throws {
         let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
         let profile = UserProfile(
             context: context,
-            quitDate: Date(),
+            quitDate: yesterday,
             cigarettesPerDayBefore: 20,
             pricePerPack: 25,
             cigarettesPerPack: 20
         )
+        let log = SmokingLog(context: context, date: yesterday, count: 10) // 10 < 20 基准
+
+        let badges = AchievementService.evaluateAndAward(profile: profile, logs: [log], context: context)
+
+        #expect(badges.map(\.id).contains("streak_1_day"))
+    }
+
+    @Test func noStreak1Day_whenOnlyTodayBelowBaseline() throws {
+        let context = makeContext()
         let today = Calendar.current.startOfDay(for: Date())
-        let log = SmokingLog(context: context, date: today, count: 10) // 10 < 20 基准
+        let profile = UserProfile(
+            context: context,
+            quitDate: today,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: today, count: 14)
+        log.baselineAtTime = 15
+
+        let badges = AchievementService.evaluateAndAward(profile: profile, logs: [log], context: context)
+
+        #expect(!badges.map(\.id).contains("streak_1_day"))
+    }
+
+    @Test func awards_streak1Day_whenYesterdayBelowBaseline() throws {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: yesterday, count: 14)
+        log.baselineAtTime = 15
 
         let badges = AchievementService.evaluateAndAward(profile: profile, logs: [log], context: context)
 
@@ -173,7 +214,7 @@ struct AchievementServiceTests {
         let context = makeContext()
         let profile = UserProfile(
             context: context,
-            quitDate: Date(),
+            quitDate: Date().addingTimeInterval(-86400 * 3),
             cigarettesPerDayBefore: 20,
             pricePerPack: 25,
             cigarettesPerPack: 20
@@ -207,16 +248,17 @@ struct AchievementServiceTests {
         let context = makeContext()
         let profile = UserProfile(
             context: context,
-            quitDate: Date(),
+            quitDate: Date().addingTimeInterval(-86400 * 7),
             cigarettesPerDayBefore: 20,
             pricePerPack: 25,
             cigarettesPerPack: 20
         )
         let cal = Calendar.current
-        // 近 7 天均抽 8 支（< 20 × 50% = 10）
+        let today = cal.startOfDay(for: Date())
+        // 近 7 个已结束自然日均抽 8 支（< 20 × 50% = 10）
         var logs: [SmokingLog] = []
-        for offset in 0..<7 {
-            let date = cal.startOfDay(for: cal.date(byAdding: .day, value: -offset, to: Date())!)
+        for offset in 1...7 {
+            let date = cal.date(byAdding: .day, value: -offset, to: today)!
             let log = SmokingLog(context: context, date: date, count: 8)
             log.baselineAtTime = 20
             logs.append(log)
@@ -225,5 +267,63 @@ struct AchievementServiceTests {
         let badges = AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
 
         #expect(badges.map(\.id).contains("reduction_half"))
+    }
+
+    @Test func noMoneyAchievement_whenOnlyTodayInProgressSavingsReachThreshold() throws {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 100,
+            pricePerPack: 20,
+            cigarettesPerPack: 20
+        )
+        let yesterdayLog = SmokingLog(context: context, date: yesterday, count: 1)
+        yesterdayLog.baselineAtTime = 100
+        yesterdayLog.pricePerPackAtTime = 20
+        yesterdayLog.cigarettesPerPackAtTime = 20
+        let todayLog = SmokingLog(context: context, date: today, count: 0)
+        todayLog.baselineAtTime = 100
+        todayLog.pricePerPackAtTime = 20
+        todayLog.cigarettesPerPackAtTime = 20
+
+        let badges = AchievementService.evaluateAndAward(
+            profile: profile,
+            logs: [yesterdayLog, todayLog],
+            context: context
+        )
+
+        #expect(!badges.map(\.id).contains("money_100"))
+    }
+
+    @Test func noReductionHalf_whenOnlyTodayInProgressAverageReachesThreshold() throws {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let start = cal.date(byAdding: .day, value: -7, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: start,
+            cigarettesPerDayBefore: 20,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        var logs: [SmokingLog] = []
+        for offset in 1...6 {
+            let date = cal.date(byAdding: .day, value: -offset, to: today)!
+            let log = SmokingLog(context: context, date: date, count: 20)
+            log.baselineAtTime = 20
+            logs.append(log)
+        }
+        let todayLog = SmokingLog(context: context, date: today, count: 0)
+        todayLog.baselineAtTime = 20
+        logs.append(todayLog)
+
+        let badges = AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
+
+        #expect(!badges.map(\.id).contains("reduction_half"))
     }
 }

@@ -22,25 +22,45 @@ final class PersistenceController {
         container = NSPersistentCloudKitContainer(name: "SmokeFree", managedObjectModel: Self.model)
 
         let description = container.persistentStoreDescriptions.first!
-        #if !targetEnvironment(simulator)
+        #if DEBUG || targetEnvironment(simulator)
+        description.cloudKitContainerOptions = nil
+        #else
         description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
             containerIdentifier: "iCloud.com.smokefree.app"
         )
         #endif
 
-        container.loadPersistentStores { _, error in
-            if let error = error as NSError? {
-                print("=== Core Data load failed ===")
-                print("Domain: \(error.domain)")
-                print("Code: \(error.code)")
-                print("UserInfo: \(error.userInfo)")
-                if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError {
-                    print("Underlying: domain=\(underlying.domain), code=\(underlying.code), userInfo=\(underlying.userInfo)")
-                }
-                fatalError("Core Data store failed: \(error.localizedDescription)")
-            }
-        }
+        loadPersistentStores(description: description, allowsLocalFallback: true)
         container.viewContext.automaticallyMergesChangesFromParent = true
+    }
+
+    private func loadPersistentStores(description: NSPersistentStoreDescription, allowsLocalFallback: Bool) {
+        container.loadPersistentStores { [weak self] _, error in
+            guard let self, let error = error as NSError? else { return }
+
+            #if !DEBUG && !targetEnvironment(simulator)
+            if allowsLocalFallback, description.cloudKitContainerOptions != nil {
+                print("=== CloudKit store load failed; retrying local-only Core Data ===")
+                self.logStoreLoadError(error)
+                description.cloudKitContainerOptions = nil
+                self.loadPersistentStores(description: description, allowsLocalFallback: false)
+                return
+            }
+            #endif
+
+            print("=== Core Data load failed ===")
+            self.logStoreLoadError(error)
+            fatalError("Core Data store failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func logStoreLoadError(_ error: NSError) {
+        print("Domain: \(error.domain)")
+        print("Code: \(error.code)")
+        print("UserInfo: \(error.userInfo)")
+        if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError {
+            print("Underlying: domain=\(underlying.domain), code=\(underlying.code), userInfo=\(underlying.userInfo)")
+        }
     }
 
     static let model: NSManagedObjectModel = makeModel()

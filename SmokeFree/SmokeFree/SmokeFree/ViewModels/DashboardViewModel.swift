@@ -9,6 +9,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var nextMilestone: HealthMilestone? = nil
     @Published private(set) var nextMilestoneProgress: Double = 0
     @Published private(set) var nextMilestoneTimeRemaining: String = ""
+    private var completedStreakDays: Int = 0
 
     private static let notifiedMilestonesKey = "notified_milestones"
 
@@ -24,22 +25,23 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func update(from profile: UserProfile, logs: [SmokingLog], purchases: [PurchaseRecord] = []) {
-        let prevStreakDays = streakDays
+        let prevCompletedStreakDays = completedStreakDays
         streakDays = profile.actualStreakDays(logs: logs)
+        completedStreakDays = profile.completedStreakDays(logs: logs)
         moneySaved = profile.moneySaved(logs: logs, purchases: purchases)
 
         let milestones = AppConfig.healthMilestones
 
-        let next = milestones.first { $0.requiredStreakDays > streakDays }
+        let next = milestones.first { $0.requiredStreakDays > completedStreakDays }
         nextMilestone = next
 
         if let next = next {
-            let prevRequired = milestones.last { $0.requiredStreakDays <= streakDays }
+            let prevRequired = milestones.last { $0.requiredStreakDays <= completedStreakDays }
             let start = prevRequired?.requiredStreakDays ?? 0
             let span = next.requiredStreakDays - start
-            let progress = span > 0 ? Double(streakDays - start) / Double(span) : 0
+            let progress = span > 0 ? Double(completedStreakDays - start) / Double(span) : 0
             nextMilestoneProgress = min(max(progress, 0), 1)
-            let remaining = next.requiredStreakDays - streakDays
+            let remaining = next.requiredStreakDays - completedStreakDays
             nextMilestoneTimeRemaining = "还需 \(remaining) 天连续控烟"
         } else {
             nextMilestoneProgress = 1.0
@@ -48,9 +50,9 @@ final class DashboardViewModel: ObservableObject {
 
         writeWidgetData(profile: profile)
 
-        if streakDays > prevStreakDays {
+        if completedStreakDays > prevCompletedStreakDays {
             let newlyUnlocked = milestones.filter {
-                $0.requiredStreakDays > prevStreakDays && $0.requiredStreakDays <= streakDays
+                $0.requiredStreakDays > prevCompletedStreakDays && $0.requiredStreakDays <= completedStreakDays
             }
             for milestone in newlyUnlocked {
                 if !Self.isMilestoneNotified(milestone.id) {

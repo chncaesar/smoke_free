@@ -52,7 +52,7 @@ struct AddGoalView: View {
                     }
                 }
 
-                Section("奖励") {
+                Section("奖励（可选）") {
                     TextField("例：买一本新书", text: $vm.newReward)
                 }
             }

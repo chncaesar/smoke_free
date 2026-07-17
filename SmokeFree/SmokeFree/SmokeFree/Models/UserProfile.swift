@@ -1,6 +1,10 @@
 import Foundation
 import CoreData
 
+private let defaultCigarettesPerPack = 20
+private let defaultGoalAmount = 300_000.0
+private let defaultGoalName = "宝马 3 系"
+
 @objc(UserProfile)
 public class UserProfile: NSManagedObject {
     @NSManaged public var id: UUID?
@@ -19,12 +23,12 @@ public class UserProfile: NSManagedObject {
     }
 
     convenience init(context: NSManagedObjectContext,
-                     quitDate: Date,
-                     cigarettesPerDayBefore: Int,
-                     pricePerPack: Double,
-                     cigarettesPerPack: Int = 20,
-                     currencyCode: String = "CNY",
-                     name: String = "") {
+                      quitDate: Date,
+                      cigarettesPerDayBefore: Int,
+                      pricePerPack: Double,
+                      cigarettesPerPack: Int = defaultCigarettesPerPack,
+                      currencyCode: String = "CNY",
+                      name: String = "") {
         self.init(context: context)
         self.id = UUID()
         self.quitDate = quitDate
@@ -34,16 +38,19 @@ public class UserProfile: NSManagedObject {
         self.currencyCode = currencyCode
         self.name = name
         self.createdAt = Date()
-        self.goalAmount = 300_000
-        self.goalName = "宝马 3 系"
+        applyDefaultsIfNeeded()
     }
 
     override public func awakeFromInsert() {
         super.awakeFromInsert()
+        applyDefaultsIfNeeded()
+    }
+
+    private func applyDefaultsIfNeeded() {
         if id == nil { id = UUID() }
         if createdAt == nil { createdAt = Date() }
-        if goalName == nil { goalName = "宝马 3 系" }
-        if goalAmount == 0 { goalAmount = 300_000 }
+        if goalName == nil { goalName = defaultGoalName }
+        if goalAmount == 0 { goalAmount = defaultGoalAmount }
     }
 }
 
@@ -58,21 +65,48 @@ extension UserProfile {
 
     func actualStreakDays(logs: [SmokingLog]) -> Int {
         let cal = Calendar.current
-        var count = 0
-        var checkDate = cal.startOfDay(for: Date())
+        return streakDays(logs: logs, startingAt: cal.startOfDay(for: Date()))
+    }
+
+    func completedStreakDays(logs: [SmokingLog]) -> Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: today) else { return 0 }
+        return streakDays(logs: logs, startingAt: yesterday)
+    }
+
+    private func streakDays(logs: [SmokingLog], startingAt firstCheckDate: Date) -> Int {
+        let cal = Calendar.current
+        var checkDate = firstCheckDate
         let startOfQuitDate = cal.startOfDay(for: quitDate ?? Date())
+        var count = 0
 
         while checkDate >= startOfQuitDate {
-            if let log = logs.first(where: { $0.date == checkDate }) {
-                let baseline = Int(log.baselineAtTime) != 0 ? Int(log.baselineAtTime) : Int(cigarettesPerDayBefore)
-                let threshold = baseline > 0 ? baseline : 1
-                if Int(log.count) >= threshold { break }
+            if let log = logs.first(where: { log in
+                guard let date = log.date else { return false }
+                return cal.startOfDay(for: date) == checkDate
+            }) {
+                if !isSuccessfulControlDay(log) { break }
             }
             count += 1
             guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
             checkDate = prev
         }
         return count
+    }
+
+    private func isSuccessfulControlDay(_ log: SmokingLog) -> Bool {
+        let baseline = Int(log.baselineAtTime) != 0 ? Int(log.baselineAtTime) : Int(cigarettesPerDayBefore)
+        let threshold = baseline > 0 ? baseline : 1
+        return Int(log.count) < threshold
+    }
+
+    func completedDaysSinceQuit() -> Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let startOfQuitDate = cal.startOfDay(for: quitDate ?? Date())
+        guard startOfQuitDate < today else { return 0 }
+        return cal.dateComponents([.day], from: startOfQuitDate, to: today).day ?? 0
     }
 
     func moneySaved(logs: [SmokingLog], purchases: [PurchaseRecord] = []) -> Double {
@@ -92,6 +126,12 @@ extension UserProfile {
         }
     }
 
+    func completedMoneySaved(logs: [SmokingLog], purchases: [PurchaseRecord] = []) -> Double {
+        let today = Calendar.current.startOfDay(for: Date())
+        let completedLogs = logs.filter { ($0.date ?? .distantFuture) < today }
+        return moneySaved(logs: completedLogs, purchases: purchases)
+    }
+
     static func perCigPrice(
         log: SmokingLog,
         profilePricePerPack: Double,
@@ -108,7 +148,7 @@ extension UserProfile {
            let logDate = log.date,
            logDate >= Calendar.current.startOfDay(for: pd),
            logDate <= exhaustion {
-            return purchase.pricePerPack / 20.0
+            return purchase.pricePerPack / Double(defaultCigarettesPerPack)
         }
         return profilePricePerPack / Double(max(1, profilePerPack))
     }
@@ -117,7 +157,7 @@ extension UserProfile {
         guard let latest = purchases.max(by: { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }) else { return nil }
         let cal = Calendar.current
         let purchaseDay = cal.startOfDay(for: latest.date ?? Date())
-        let totalBought = Int(latest.quantity) * 20
+        let totalBought = Int(latest.quantity) * defaultCigarettesPerPack
         var cumulative = 0
         let sortedLogs = logs
             .compactMap { log -> (date: Date, count: Int32)? in

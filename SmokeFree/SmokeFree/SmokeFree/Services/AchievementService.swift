@@ -1,6 +1,7 @@
 import Foundation
 import CoreData
 
+// Regression coverage: AchievementServiceTests.
 struct AchievementService {
     /// 评估并颁发成就，返回本次新解锁的徽章列表
     @discardableResult
@@ -10,7 +11,7 @@ struct AchievementService {
         purchases: [PurchaseRecord] = [],
         context: NSManagedObjectContext
     ) -> [AchievementDefinition] {
-        let streakDays = profile.actualStreakDays(logs: logs)
+        let completedStreakDays = profile.completedStreakDays(logs: logs)
         let baseline = profile.cigarettesPerDayBefore
 
         // 获取已解锁的 badgeID 集合
@@ -20,8 +21,7 @@ struct AchievementService {
 
         // 预计算减量相关数据（有 logs 时才有意义）
         let sortedLogs = logs.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
-        let consecutiveDaysBelow = Self.consecutiveDaysBelow(baseline: Int(baseline), logs: sortedLogs)
-        let sevenDayAvg = Self.sevenDayAverage(logs: sortedLogs)
+        let sevenDayAvg = Self.sevenDayAverage(profile: profile, logs: sortedLogs)
 
         var newlyUnlocked: [AchievementDefinition] = []
 
@@ -30,14 +30,15 @@ struct AchievementService {
 
             var qualifies = false
 
-            if let required = definition.requiredStreakDays, streakDays >= required {
+            if let required = definition.requiredStreakDays, completedStreakDays >= required {
                 qualifies = true
             }
-            if let required = definition.requiredMoneySaved, profile.moneySaved(logs: logs, purchases: purchases) >= required {
+            if let required = definition.requiredMoneySaved,
+               profile.completedMoneySaved(logs: logs, purchases: purchases) >= required {
                 qualifies = true
             }
             if let required = definition.requiredConsecutiveDaysBelow, baseline > 0,
-               consecutiveDaysBelow >= required {
+               completedStreakDays >= required {
                 qualifies = true
             }
             if let required = definition.requiredReductionPercent, baseline > 0,
@@ -57,34 +58,17 @@ struct AchievementService {
 
     // MARK: - 减量计算辅助
 
-    /// 从最新一天起，连续低于基准的天数。无记录视为 0 支（低于基准，继续计数）。
-    private static func consecutiveDaysBelow(baseline: Int, logs: [SmokingLog]) -> Int {
-        let cal = Calendar.current
-        var count = 0
-        var checkDate = cal.startOfDay(for: Date())
-        let threshold = baseline > 0 ? baseline : 1
-
-        for _ in 0..<365 {
-            if let log = logs.first(where: { $0.date == checkDate }) {
-                let effectiveBaseline = log.baselineAtTime != 0 ? Int(log.baselineAtTime) : baseline
-                if Int(log.count) >= max(effectiveBaseline, 1) {
-                    break
-                }
-            }
-            count += 1
-            guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
-            checkDate = prev
-        }
-        return count
-    }
-
-    /// 近 7 天日均吸烟量，无记录天计为 0，分母固定为 7。
-    private static func sevenDayAverage(logs: [SmokingLog]) -> Double {
+    /// 近 7 个已结束自然日的日均吸烟量，无记录天计为 0，分母固定为 7。
+    private static func sevenDayAverage(profile: UserProfile, logs: [SmokingLog]) -> Double {
+        guard profile.completedDaysSinceQuit() >= 7 else { return .infinity }
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
-        let total = (0..<7).reduce(0) { sum, offset in
+        let total = (1...7).reduce(0) { sum, offset in
             guard let date = cal.date(byAdding: .day, value: -offset, to: today) else { return sum }
-            let count = Int(logs.first(where: { $0.date == date })?.count ?? 0)
+            let count = Int(logs.first(where: { log in
+                guard let logDate = log.date else { return false }
+                return cal.startOfDay(for: logDate) == date
+            })?.count ?? 0)
             return sum + count
         }
         return Double(total) / 7.0

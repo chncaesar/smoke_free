@@ -14,7 +14,7 @@ final class HealthTimelineViewModel: ObservableObject {
     @Published private(set) var items: [MilestoneItem] = []
 
     func load(profile: UserProfile, logs: [SmokingLog]) {
-        load(streakDays: profile.actualStreakDays(logs: logs), profile: profile)
+        load(streakDays: profile.completedStreakDays(logs: logs), profile: profile)
     }
 
     func load(streakDays: Int, profile: UserProfile) {

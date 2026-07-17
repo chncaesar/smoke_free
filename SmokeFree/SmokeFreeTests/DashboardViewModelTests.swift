@@ -9,7 +9,7 @@ struct DashboardViewModelTests {
 
     private func makeContext() -> NSManagedObjectContext {
         let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
-        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.persistentStoreDescriptions.first!.type = NSInMemoryStoreType
         container.loadPersistentStores { _, _ in }
         return container.viewContext
     }
@@ -43,7 +43,7 @@ struct DashboardViewModelTests {
     // MARK: - 里程碑进度
 
     @Test func update_25SecondsIn_firstMilestoneIsNext() {
-        // 刚戒烟 25 秒，宽松连续天数下当天已算 streak=1，下一个里程碑是 "3days"（需要 3 天）
+        // 刚开始控烟，今天未结束，永久里程碑不能把今天算作已完成。
         let context = makeContext()
         let quitDate = Date().addingTimeInterval(-25)
         let profile = UserProfile(
@@ -56,12 +56,32 @@ struct DashboardViewModelTests {
         let vm = DashboardViewModel()
         vm.update(from: profile, logs: [])
 
-        #expect(vm.nextMilestone?.id == "3days")
+        #expect(vm.nextMilestone?.id == "day1")
+    }
+
+    @Test func update_todayBelowBaseline_doesNotUnlockFirstMilestone() {
+        let context = makeContext()
+        let today = Calendar.current.startOfDay(for: Date())
+        let profile = UserProfile(
+            context: context,
+            quitDate: today,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: today, count: 14)
+        log.baselineAtTime = 15
+        let vm = DashboardViewModel()
+
+        vm.update(from: profile, logs: [log])
+
+        #expect(vm.streakDays == 1)
+        #expect(vm.nextMilestone?.id == "day1")
     }
 
     @Test func update_progressBetweenZeroAndOne() {
         let context = makeContext()
-        let quitDate = Date().addingTimeInterval(-86400) // 1 天前，streakDays=2（含今天）
+        let quitDate = Date().addingTimeInterval(-86400 * 2) // 2 天前，完整控烟天数为 2
         let profile = UserProfile(
             context: context,
             quitDate: quitDate,

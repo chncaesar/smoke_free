@@ -7,7 +7,7 @@ struct GoalsViewModelTests {
 
     private func makeContext() -> NSManagedObjectContext {
         let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
-        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.persistentStoreDescriptions.first!.type = NSInMemoryStoreType
         container.loadPersistentStores { _, _ in }
         return container.viewContext
     }
@@ -25,6 +25,18 @@ struct GoalsViewModelTests {
         #expect(goal.completedAt != nil)
     }
 
+    @Test func checkCompletion_byDays_savesCompletedGoal() throws {
+        let context = makeContext()
+        let goal = Goal(context: context, title: "坚持一天", reward: "散步", targetDays: 1)
+        try context.save()
+        let vm = GoalsViewModel()
+
+        vm.checkCompletion(goals: [goal], streakDays: 1, moneySaved: 0)
+
+        #expect(goal.isCompleted)
+        #expect(context.hasChanges == false)
+    }
+
     @Test func checkCompletion_byDays_doesNotComplete_whenBelowTarget() {
         let context = makeContext()
         let goal = Goal(context: context, title: "坚持一周", reward: "买本书", targetDays: 7)
@@ -34,6 +46,50 @@ struct GoalsViewModelTests {
 
         #expect(!goal.isCompleted)
         #expect(goal.completedAt == nil)
+    }
+
+    @Test func checkCompletion_byDays_doesNotCompleteFromTodayInProgressLog() {
+        let context = makeContext()
+        let today = Calendar.current.startOfDay(for: Date())
+        let profile = UserProfile(
+            context: context,
+            quitDate: today,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: today, count: 14)
+        log.baselineAtTime = 15
+        let goal = Goal(context: context, title: "控烟第一天", reward: "散步", targetDays: 1)
+        let vm = GoalsViewModel()
+
+        vm.checkCompletion(profile: profile, goals: [goal], logs: [log], purchases: [])
+
+        #expect(!goal.isCompleted)
+        #expect(goal.completedAt == nil)
+    }
+
+    @Test func checkCompletion_byDays_completesFromYesterdayBelowBaseline() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: yesterday, count: 14)
+        log.baselineAtTime = 15
+        let goal = Goal(context: context, title: "控烟第一天", reward: "散步", targetDays: 1)
+        let vm = GoalsViewModel()
+
+        vm.checkCompletion(profile: profile, goals: [goal], logs: [log], purchases: [])
+
+        #expect(goal.isCompleted)
+        #expect(goal.completedAt != nil)
     }
 
     // MARK: - checkCompletion — 按金额
@@ -56,6 +112,35 @@ struct GoalsViewModelTests {
         vm.checkCompletion(goals: [goal], streakDays: 0, moneySaved: 49.9)
 
         #expect(!goal.isCompleted)
+    }
+
+    @Test func checkCompletion_byMoney_doesNotCompleteFromTodayInProgressSavings() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 20,
+            pricePerPack: 20,
+            cigarettesPerPack: 20
+        )
+        let yesterdayLog = SmokingLog(context: context, date: yesterday, count: 0)
+        yesterdayLog.baselineAtTime = 20
+        yesterdayLog.pricePerPackAtTime = 20
+        yesterdayLog.cigarettesPerPackAtTime = 20
+        let todayLog = SmokingLog(context: context, date: today, count: 0)
+        todayLog.baselineAtTime = 20
+        todayLog.pricePerPackAtTime = 20
+        todayLog.cigarettesPerPackAtTime = 20
+        let goal = Goal(context: context, title: "存够钱", reward: "奖励", targetDays: 999, targetMoneySaved: 21.0)
+        let vm = GoalsViewModel()
+
+        vm.checkCompletion(profile: profile, goals: [goal], logs: [yesterdayLog, todayLog], purchases: [])
+
+        #expect(!goal.isCompleted)
+        #expect(goal.completedAt == nil)
     }
 
     // MARK: - checkCompletion — 已完成目标不再处理
@@ -111,6 +196,58 @@ struct GoalsViewModelTests {
         #expect(completed[1].title == "早完成")
     }
 
+    // MARK: - progress display
+
+    @Test func progressText_byDays_doesNotCountTodayInProgressDay() {
+        let context = makeContext()
+        let today = Calendar.current.startOfDay(for: Date())
+        let profile = UserProfile(
+            context: context,
+            quitDate: today,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let goal = Goal(context: context, title: "控烟三天", reward: "", targetDays: 3)
+        let vm = GoalsViewModel()
+
+        let value = vm.progressValue(goal: goal, profile: profile, logs: [], purchases: [])
+        let text = vm.progressText(goal: goal, profile: profile, logs: [], purchases: [])
+
+        #expect(value == 0)
+        #expect(text == "0 / 3 天")
+    }
+
+    @Test func progressText_byMoney_doesNotCountTodayInProgressSavings() {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 20,
+            pricePerPack: 20,
+            cigarettesPerPack: 20
+        )
+        let yesterdayLog = SmokingLog(context: context, date: yesterday, count: 0)
+        yesterdayLog.baselineAtTime = 20
+        yesterdayLog.pricePerPackAtTime = 20
+        yesterdayLog.cigarettesPerPackAtTime = 20
+        let todayLog = SmokingLog(context: context, date: today, count: 0)
+        todayLog.baselineAtTime = 20
+        todayLog.pricePerPackAtTime = 20
+        todayLog.cigarettesPerPackAtTime = 20
+        let goal = Goal(context: context, title: "存够钱", reward: "", targetDays: 999, targetMoneySaved: 21)
+        let vm = GoalsViewModel()
+
+        let value = vm.progressValue(goal: goal, profile: profile, logs: [yesterdayLog, todayLog], purchases: [])
+        let text = vm.progressText(goal: goal, profile: profile, logs: [yesterdayLog, todayLog], purchases: [])
+
+        #expect(abs(value - (20.0 / 21.0)) < 0.0001)
+        #expect(text == "¥20 / ¥21")
+    }
+
     // MARK: - isFormValid
 
     @Test func isFormValid_true_whenTitleAndRewardNonEmpty() {
@@ -129,10 +266,30 @@ struct GoalsViewModelTests {
         #expect(!vm.isFormValid)
     }
 
-    @Test func isFormValid_false_whenRewardEmpty() {
+    @Test func isFormValid_true_whenRewardEmpty() {
         let vm = GoalsViewModel()
         vm.newTitle = "我的目标"
         vm.newReward = ""
+
+        #expect(vm.isFormValid)
+    }
+
+    @Test func isFormValid_false_whenMoneyTargetEnabledWithoutAmount() {
+        let vm = GoalsViewModel()
+        vm.newTitle = "我的目标"
+        vm.newReward = "奖励"
+        vm.useMoneyTarget = true
+        vm.newTargetMoney = nil
+
+        #expect(!vm.isFormValid)
+    }
+
+    @Test func isFormValid_false_whenMoneyTargetEnabledWithZeroAmount() {
+        let vm = GoalsViewModel()
+        vm.newTitle = "我的目标"
+        vm.newReward = "奖励"
+        vm.useMoneyTarget = true
+        vm.newTargetMoney = 0
 
         #expect(!vm.isFormValid)
     }

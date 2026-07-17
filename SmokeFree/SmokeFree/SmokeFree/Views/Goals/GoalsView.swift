@@ -125,13 +125,15 @@ private struct GoalRowView: View {
                             .font(.subheadline)
                     }
                 }
-                HStack(spacing: 4) {
-                    Image(systemName: "gift.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                    Text(goal.reward ?? "")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if let reward = goal.reward?.trimmingCharacters(in: .whitespaces), !reward.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gift.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Text(reward)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 if let progressText {
                     Text(progressText)

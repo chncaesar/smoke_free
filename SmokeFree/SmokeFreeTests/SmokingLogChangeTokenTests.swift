@@ -7,7 +7,7 @@ struct SmokingLogChangeTokenTests {
 
     private func makeContext() -> NSManagedObjectContext {
         let container = NSPersistentContainer(name: "SmokeFree", managedObjectModel: PersistenceController.model)
-        container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        container.persistentStoreDescriptions.first!.type = NSInMemoryStoreType
         container.loadPersistentStores { _, _ in }
         return container.viewContext
     }

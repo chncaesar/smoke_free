@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct SmokingHabitsView: View {
-    let vm: OnboardingViewModel
+    // Regression coverage: OnboardingViewTests.
+    @ObservedObject var vm: OnboardingViewModel
 
     var body: some View {
         ScrollView {
