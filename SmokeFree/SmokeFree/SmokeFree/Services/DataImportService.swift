@@ -97,6 +97,9 @@ struct DataImportService {
             let goal = Goal(context: context, title: gd.title, reward: gd.reward, targetDays: Int(gd.targetDays), targetMoneySaved: gd.targetMoneySaved ?? 0)
             goal.isCompleted = gd.isCompleted
             goal.completedAt = gd.completedAt
+            if let createdAt = gd.createdAt {
+                goal.createdAt = createdAt
+            }
             existingGoalKeys.insert(key)
             result.goalsAdded += 1
         }

@@ -26,7 +26,7 @@ struct AchievementsView: View {
         }
         .navigationTitle("成就")
         .onAppear { vm.load(unlocked: Array(unlocked)) }
-        .onChange(of: unlocked.count) { _ in vm.load(unlocked: Array(unlocked)) }
+        .onChange(of: UnlockedAchievement.changeToken(for: unlocked)) { _ in vm.load(unlocked: Array(unlocked)) }
     }
 }
 

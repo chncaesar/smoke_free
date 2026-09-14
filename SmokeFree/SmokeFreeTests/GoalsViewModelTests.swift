@@ -84,6 +84,7 @@ struct GoalsViewModelTests {
         let log = SmokingLog(context: context, date: yesterday, count: 14)
         log.baselineAtTime = 15
         let goal = Goal(context: context, title: "控烟第一天", reward: "散步", targetDays: 1)
+        goal.createdAt = yesterday
         let vm = GoalsViewModel()
 
         vm.checkCompletion(profile: profile, goals: [goal], logs: [log], purchases: [])
@@ -216,6 +217,57 @@ struct GoalsViewModelTests {
 
         #expect(value == 0)
         #expect(text == "0 / 3 天")
+    }
+
+    @Test func newDayGoal_doesNotInheritCompletedGoalProgress() {
+        let context = makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: threeDaysAgo,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let firstGoal = Goal(context: context, title: "控烟三天", reward: "", targetDays: 3)
+        firstGoal.createdAt = threeDaysAgo
+        let secondGoal = Goal(context: context, title: "再控烟五天", reward: "", targetDays: 5)
+        let vm = GoalsViewModel()
+
+        vm.checkCompletion(
+            profile: profile,
+            goals: [firstGoal, secondGoal],
+            logs: [],
+            purchases: []
+        )
+
+        #expect(firstGoal.isCompleted)
+        #expect(!secondGoal.isCompleted)
+        #expect(vm.progressValue(goal: secondGoal, profile: profile, logs: [], purchases: []) == 0)
+        #expect(vm.progressText(goal: secondGoal, profile: profile, logs: [], purchases: []) == "0 / 5 天")
+    }
+
+    @Test func goalBackupRoundTrip_preservesCreatedAt() throws {
+        let sourceContext = makeContext()
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let goal = Goal(context: sourceContext, title: "控烟五天", reward: "", targetDays: 5)
+        goal.createdAt = createdAt
+        try sourceContext.save()
+
+        let backupDirectory = try DataExportService.exportData(context: sourceContext)
+        defer { try? FileManager.default.removeItem(at: backupDirectory) }
+
+        let destinationContext = makeContext()
+        _ = try DataImportService.importFromJSON(
+            url: backupDirectory.appendingPathComponent("data.json"),
+            context: destinationContext
+        )
+        let importedGoals = try destinationContext.fetch(Goal.fetchRequest())
+
+        #expect(importedGoals.count == 1)
+        #expect(importedGoals.first?.createdAt == createdAt)
     }
 
     @Test func progressText_byMoney_doesNotCountTodayInProgressSavings() {

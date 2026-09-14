@@ -25,4 +25,17 @@ public class UnlockedAchievement: NSManagedObject {
         if id == nil { id = UUID() }
         if unlockedAt == nil { unlockedAt = Date() }
     }
+
+    static func changeToken<S: Sequence>(for achievements: S) -> String where S.Element == UnlockedAchievement {
+        achievements.map { achievement in
+            [
+                achievement.objectID.uriRepresentation().absoluteString,
+                achievement.badgeID ?? "",
+                String(achievement.unlockedAt?.timeIntervalSince1970 ?? 0),
+                String(achievement.isNewlySeen)
+            ].joined(separator: ":")
+        }
+        .sorted()
+        .joined(separator: "|")
+    }
 }

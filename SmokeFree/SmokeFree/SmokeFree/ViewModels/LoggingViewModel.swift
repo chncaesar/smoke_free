@@ -97,6 +97,7 @@ final class LoggingViewModel: ObservableObject {
             context.delete(log)
         }
         try? context.save()
+        recalculateAchievementsIfPossible(context: context)
     }
 
     /// 更新指定历史记录。日期和价格快照保持不变。
@@ -104,6 +105,45 @@ final class LoggingViewModel: ObservableObject {
         log.count = Int32(count)
         log.notes = notes.isEmpty ? nil : notes
         try? context.save()
+        recalculateAchievementsIfPossible(context: context)
+    }
+
+    /// 补录指定日期的记录；同一天已有记录时直接更新，避免重复记录。
+    func saveHistoricalLog(
+        date: Date,
+        count: Int,
+        notes: String,
+        context: NSManagedObjectContext,
+        profile: UserProfile?
+    ) {
+        let day = Calendar.current.startOfDay(for: date)
+        let request = SmokingLog.fetchRequest()
+        request.fetchLimit = 1
+        request.predicate = NSPredicate(format: "date == %@", day as NSDate)
+
+        if let existing = try? context.fetch(request), let log = existing.first {
+            updateLog(log, count: count, notes: notes, context: context)
+            return
+        }
+
+        let log = SmokingLog(context: context, date: day, count: count, notes: notes.isEmpty ? nil : notes)
+        if let profile {
+            log.baselineAtTime = profile.cigarettesPerDayBefore
+            log.pricePerPackAtTime = profile.pricePerPack
+            log.cigarettesPerPackAtTime = profile.cigarettesPerPack
+        }
+        try? context.save()
+        recalculateAchievementsIfPossible(context: context)
+    }
+
+    private func recalculateAchievementsIfPossible(context: NSManagedObjectContext) {
+        let profileRequest = NSFetchRequest<UserProfile>(entityName: "UserProfile")
+        profileRequest.fetchLimit = 1
+        guard let profile = (try? context.fetch(profileRequest))?.first else { return }
+
+        let logs = (try? context.fetch(NSFetchRequest<SmokingLog>(entityName: "SmokingLog"))) ?? []
+        let purchases = (try? context.fetch(NSFetchRequest<PurchaseRecord>(entityName: "PurchaseRecord"))) ?? []
+        AchievementService.evaluateAndAward(profile: profile, logs: logs, purchases: purchases, context: context)
     }
 
     // MARK: - 保存后正向反馈

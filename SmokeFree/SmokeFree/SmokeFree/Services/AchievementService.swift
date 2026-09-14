@@ -14,20 +14,17 @@ struct AchievementService {
         let completedStreakDays = profile.completedStreakDays(logs: logs)
         let baseline = profile.cigarettesPerDayBefore
 
-        // 获取已解锁的 badgeID 集合
         let fetchRequest = NSFetchRequest<UnlockedAchievement>(entityName: "UnlockedAchievement")
         let existing = (try? context.fetch(fetchRequest)) ?? []
-        let unlockedIDs = Set(existing.map(\.badgeID))
 
         // 预计算减量相关数据（有 logs 时才有意义）
         let sortedLogs = logs.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
         let sevenDayAvg = Self.sevenDayAverage(profile: profile, logs: sortedLogs)
 
+        var qualifyingDefinitions: [AchievementDefinition] = []
         var newlyUnlocked: [AchievementDefinition] = []
 
         for definition in AppConfig.achievementDefinitions {
-            guard !unlockedIDs.contains(definition.id) else { continue }
-
             var qualifies = false
 
             if let required = definition.requiredStreakDays, completedStreakDays >= required {
@@ -47,9 +44,23 @@ struct AchievementService {
             }
 
             if qualifies {
-                _ = UnlockedAchievement(context: context, badgeID: definition.id)
-                newlyUnlocked.append(definition)
+                qualifyingDefinitions.append(definition)
             }
+        }
+
+        let knownIDs = Set(AppConfig.achievementDefinitions.map(\.id))
+        let qualifyingIDs = Set(qualifyingDefinitions.map(\.id))
+        for achievement in existing {
+            guard let badgeID = achievement.badgeID, knownIDs.contains(badgeID) else { continue }
+            if !qualifyingIDs.contains(badgeID) {
+                context.delete(achievement)
+            }
+        }
+
+        let stillUnlockedIDs = Set(existing.compactMap(\.badgeID).filter { qualifyingIDs.contains($0) })
+        for definition in qualifyingDefinitions where !stillUnlockedIDs.contains(definition.id) {
+            _ = UnlockedAchievement(context: context, badgeID: definition.id)
+            newlyUnlocked.append(definition)
         }
 
         try? context.save()

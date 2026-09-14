@@ -30,6 +30,22 @@ struct AchievementServiceTests {
         return logs
     }
 
+    private func unlockedIDs(context: NSManagedObjectContext) throws -> Set<String> {
+        let fetchRequest = NSFetchRequest<UnlockedAchievement>(entityName: "UnlockedAchievement")
+        return Set(try context.fetch(fetchRequest).compactMap(\.badgeID))
+    }
+
+    @Test func unlockedAchievementChangeTokenChangesWhenBadgeIDChanges() throws {
+        let context = makeContext()
+        let achievement = UnlockedAchievement(context: context, badgeID: "streak_1_day")
+        let before = UnlockedAchievement.changeToken(for: [achievement])
+
+        achievement.badgeID = "money_100"
+        let after = UnlockedAchievement.changeToken(for: [achievement])
+
+        #expect(before != after)
+    }
+
     // MARK: - 按天数颁发（consecutiveDaysBelow）
 
     @Test func awards_streak1Day_whenStreakIs1() throws {
@@ -106,6 +122,32 @@ struct AchievementServiceTests {
         // 第二次不应重复颁发
         let second = AchievementService.evaluateAndAward(profile: profile, logs: logs, context: context)
         #expect(!second.map(\.id).contains("streak_1_day"))
+    }
+
+    @Test func revokesStreakAchievement_whenEditedLogNoLongerBelowBaseline() throws {
+        let context = makeContext()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let profile = UserProfile(
+            context: context,
+            quitDate: yesterday,
+            cigarettesPerDayBefore: 15,
+            pricePerPack: 25,
+            cigarettesPerPack: 20
+        )
+        let log = SmokingLog(context: context, date: yesterday, count: 14)
+        log.baselineAtTime = 15
+
+        AchievementService.evaluateAndAward(profile: profile, logs: [log], context: context)
+        #expect(try unlockedIDs(context: context).contains("streak_1_day"))
+
+        log.count = 15
+        try context.save()
+        let newBadges = AchievementService.evaluateAndAward(profile: profile, logs: [log], context: context)
+
+        #expect(!newBadges.map(\.id).contains("streak_1_day"))
+        #expect(try !unlockedIDs(context: context).contains("streak_1_day"))
     }
 
     // MARK: - 全部解锁

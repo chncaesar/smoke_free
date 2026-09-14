@@ -9,6 +9,7 @@ struct LoggingView: View {
     @StateObject private var vm = LoggingViewModel()
     @State private var feedbackText: String? = nil
     @State private var editingLog: SmokingLog?
+    @State private var isAddingHistoricalLog = false
 
     var body: some View {
         NavigationView {
@@ -31,8 +32,14 @@ struct LoggingView: View {
 
                 // 历史记录
                 let recent = vm.recentLogs(from: Array(logs))
-                if !recent.isEmpty {
-                    Section("最近 30 天") {
+                Section {
+                    if recent.isEmpty {
+                        Button {
+                            isAddingHistoricalLog = true
+                        } label: {
+                            Label("补录历史记录", systemImage: "plus.circle")
+                        }
+                    } else {
                         ForEach(recent, id: \.objectID) { log in
                             Button {
                                 editingLog = log
@@ -43,6 +50,14 @@ struct LoggingView: View {
                         }
                         .onDelete { indexSet in
                             vm.deleteLogs(indexSet.map { recent[$0] }, context: context)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("最近 30 天")
+                        Spacer()
+                        Button("补录") {
+                            isAddingHistoricalLog = true
                         }
                     }
                 }
@@ -60,6 +75,71 @@ struct LoggingView: View {
                     EditSmokingLogView(log: log) { count, notes in
                         vm.updateLog(log, count: count, notes: notes, context: context)
                         editingLog = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $isAddingHistoricalLog) {
+                AddSmokingLogView { date, count, notes in
+                    vm.saveHistoricalLog(
+                        date: date,
+                        count: count,
+                        notes: notes,
+                        context: context,
+                        profile: profiles.first
+                    )
+                    isAddingHistoricalLog = false
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+    }
+}
+
+// MARK: - 补录历史记录
+
+private struct AddSmokingLogView: View {
+    let onSave: (Date, Int, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var date: Date
+    @State private var count = 0
+    @State private var notes = ""
+
+    init(onSave: @escaping (Date, Int, String) -> Void) {
+        self.onSave = onSave
+        _date = State(initialValue: Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: Date())) ?? Date())
+    }
+
+    private var earliestDate: Date {
+        Calendar.current.date(byAdding: .day, value: -30, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    }
+
+    private var latestDate: Date {
+        Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("日期") {
+                    DatePicker("记录日期", selection: $date, in: earliestDate...latestDate, displayedComponents: .date)
+                }
+
+                Section("记录") {
+                    Stepper("吸烟 \(count) 支", value: $count, in: 0...200)
+                    TextField("备注（可选）", text: $notes)
+                }
+            }
+            .navigationTitle("补录吸烟记录")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        onSave(date, count, notes)
+                        dismiss()
                     }
                 }
             }

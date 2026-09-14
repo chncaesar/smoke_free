@@ -47,11 +47,17 @@ final class GoalsViewModel: ObservableObject {
 
     func checkCompletion(profile: UserProfile?, goals: [Goal], logs: [SmokingLog], purchases: [PurchaseRecord]) {
         guard let profile else { return }
-        checkCompletion(
-            goals: goals,
-            streakDays: profile.completedStreakDays(logs: logs),
-            moneySaved: profile.completedMoneySaved(logs: logs, purchases: purchases)
-        )
+        let moneySaved = profile.completedMoneySaved(logs: logs, purchases: purchases)
+        for goal in goals where !goal.isCompleted {
+            let achieved = goal.targetMoneySaved > 0
+                ? moneySaved >= goal.targetMoneySaved
+                : completedStreakDays(for: goal, profile: profile, logs: logs) >= goal.targetDays
+            if achieved {
+                goal.isCompleted = true
+                goal.completedAt = Date()
+                try? goal.managedObjectContext?.save()
+            }
+        }
         hasActiveMoneyGoal = goals.contains { !$0.isCompleted && $0.targetMoneySaved > 0 }
     }
 
@@ -61,7 +67,7 @@ final class GoalsViewModel: ObservableObject {
             let saved = profile.completedMoneySaved(logs: logs, purchases: purchases)
             return max(0, min(saved / goal.targetMoneySaved, 1.0))
         }
-        let streak = profile.completedStreakDays(logs: logs)
+        let streak = completedStreakDays(for: goal, profile: profile, logs: logs)
         return min(Double(streak) / Double(Int(goal.targetDays)), 1.0)
     }
 
@@ -71,8 +77,19 @@ final class GoalsViewModel: ObservableObject {
             let saved = profile.completedMoneySaved(logs: logs, purchases: purchases)
             return "\(saved < 0 ? "-" : "")¥\(String(format: "%.0f", abs(saved))) / ¥\(String(format: "%.0f", goal.targetMoneySaved))"
         }
-        let streak = profile.completedStreakDays(logs: logs)
+        let streak = completedStreakDays(for: goal, profile: profile, logs: logs)
         return "\(streak) / \(Int(goal.targetDays)) 天"
+    }
+
+    private func completedStreakDays(for goal: Goal, profile: UserProfile, logs: [SmokingLog]) -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startDate = calendar.startOfDay(for: goal.createdAt ?? today)
+        let completedDaysSinceCreation = max(
+            0,
+            calendar.dateComponents([.day], from: startDate, to: today).day ?? 0
+        )
+        return min(profile.completedStreakDays(logs: logs), completedDaysSinceCreation)
     }
 
     func addGoal(context: NSManagedObjectContext, sortOrder: Int) {

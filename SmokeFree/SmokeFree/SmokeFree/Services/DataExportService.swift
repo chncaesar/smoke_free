@@ -48,6 +48,7 @@ struct DataExportService {
         let targetMoneySaved: Double?
         let isCompleted: Bool
         let completedAt: Date?
+        let createdAt: Date?
     }
 
     struct AchievementData: Codable {
@@ -80,7 +81,7 @@ struct DataExportService {
             userProfile: profileData,
             smokingLogs: logs.map { LogData(date: $0.date ?? Date(), count: Int($0.count), notes: $0.notes, baselineAtTime: $0.baselineAtTime != 0 ? Int($0.baselineAtTime) : nil, pricePerPackAtTime: $0.pricePerPackAtTime != 0 ? $0.pricePerPackAtTime : nil, cigarettesPerPackAtTime: $0.cigarettesPerPackAtTime != 0 ? Int($0.cigarettesPerPackAtTime) : nil) },
             purchaseRecords: purchases.map { PurchaseData(date: $0.date ?? Date(), brand: $0.brand ?? "", quantity: Int($0.quantity), pricePerPack: $0.pricePerPack, totalCost: $0.totalCost, notes: $0.notes) },
-            goals: goals.map { GoalData(title: $0.title ?? "", reward: $0.reward ?? "", targetDays: Int($0.targetDays), targetMoneySaved: $0.targetMoneySaved, isCompleted: $0.isCompleted, completedAt: $0.completedAt) },
+            goals: goals.map { GoalData(title: $0.title ?? "", reward: $0.reward ?? "", targetDays: Int($0.targetDays), targetMoneySaved: $0.targetMoneySaved, isCompleted: $0.isCompleted, completedAt: $0.completedAt, createdAt: $0.createdAt) },
             unlockedAchievements: achievements.map { AchievementData(badgeID: $0.badgeID ?? "", unlockedAt: $0.unlockedAt ?? Date()) }
         )
 
@@ -119,9 +120,9 @@ struct DataExportService {
         }
         try Data(csv.utf8).write(to: tmpDir.appendingPathComponent("购烟记录.csv"))
 
-        csv = "标题,奖励,目标天数,目标金额,是否完成,完成日期\n"
+        csv = "标题,奖励,目标天数,目标金额,是否完成,完成日期,创建日期\n"
         for g in backup.goals {
-            csv += csvLine(g.title, g.reward, "\(g.targetDays)", opt(g.targetMoneySaved), g.isCompleted ? "是" : "否", g.completedAt.map { dfISO.string(from: $0) } ?? "")
+            csv += csvLine(g.title, g.reward, "\(g.targetDays)", opt(g.targetMoneySaved), g.isCompleted ? "是" : "否", g.completedAt.map { dfISO.string(from: $0) } ?? "", g.createdAt.map { dfISO.string(from: $0) } ?? "")
         }
         try Data(csv.utf8).write(to: tmpDir.appendingPathComponent("目标.csv"))
 
