@@ -7,7 +7,7 @@ This file provides guidance to AI coding assistants when working with this repos
 - **Build**: Open `SmokeFree/SmokeFree/SmokeFree.xcodeproj` in Xcode 15+, select iPhone 16 Pro (iOS 18.6) simulator, press `⌘R`
 - **Run all tests**: `⌘U` or Product → Test
 - **Run single test**: Click the ▶ icon next to the test method, or press `⌃⌥⌘U` with cursor inside the test
-- **Test files**: `UserProfileTests`, `DashboardViewModelTests`, `AchievementServiceTests`, `GoalsViewModelTests`
+- **Test files**: `UserProfileTests`, `DashboardViewModelTests`, `AchievementServiceTests`, `GoalsViewModelTests`, `LoggingViewModelTests` and the remaining view/service tests under `SmokeFree/SmokeFreeTests`
 - **Clean build**: `⇧⌘K` before re-running if Widget or HealthKit behaves oddly
 - **Xcode manual setup required** (after cloning, before first build):
   1. Add HealthKit capability to main Target (Signing & Capabilities → + Capability → HealthKit)
@@ -24,7 +24,7 @@ ContentView
 │   ├── WelcomeView → SmokingHabitsView → QuitDateView → NotificationsPermissionView
 └── MainTabView (5 tabs)
     ├── Tab 1 - 首页 (DashboardView) — streak, milestone progress, savings, cost card
-    ├── Tab 2 - 记录 (LoggingView) — daily log + history list (30 days)
+    ├── Tab 2 - 记录 (LoggingView) — daily log + 30-day history list, including historical backfill
     ├── Tab 3 - 进度 (ProgressTabView) — charts, timeline, achievements, import
     ├── Tab 4 - 目标 (GoalsView) — goal CRUD with auto-completion
     └── Tab 5 - 购烟 (PurchasesView) — purchase records grouped by month
@@ -42,7 +42,7 @@ ContentView
 ### ViewModels (`ObservableObject` + `@Published`)
 Created as `@StateObject` in owning Views. Key ones:
 - **DashboardViewModel**: streak, moneySaved, nextMilestone, reduction progress, widget data bridge, `effectivePricePerCig`
-- **LoggingViewModel**: todayCount CRUD, recentLogs filtering, feedbackMessage generation
+- **LoggingViewModel**: todayCount CRUD, recentLogs filtering, historical backfill/update/delete, feedbackMessage generation
 - **GoalsViewModel**: goal CRUD, auto-complete, form validation
 - **AchievementsViewModel / ChartsViewModel / HealthTimelineViewModel / PurchaseViewModel / OnboardingViewModel**
 
@@ -63,6 +63,7 @@ Created as `@StateObject` in owning Views. Key ones:
 7. **moneySaved allows negative** — exceeding baseline reduces total savings; UI shows "已超额" in red when negative
 8. **Milestone unlock date** — `today - (streakDays - requiredDays)` days ago; no complex log walking needed
 9. **context.save() after every write** — Core Data requires explicit save; also saves on `scenePhase == .background`
+10. **Historical log backfill** — the Logging tab can add or update a missing record for any of the previous 30 days; records for the same calendar day are updated instead of duplicated, and new records receive the current profile snapshots
 
 ### Significant Config Details
 - Health milestones: `AppConfig.healthMilestones` — uses `requiredStreakDays` (not time offsets)
