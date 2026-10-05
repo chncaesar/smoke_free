@@ -11,22 +11,6 @@ struct TrendsView: View {
 
     var body: some View {
         ScrollView {
-            if logs.isEmpty && purchases.isEmpty {
-                VStack(spacing: 8) {
-                    Spacer().frame(height: 40)
-                    Image(systemName: "chart.bar.xaxis")
-                        .font(.system(size: 44))
-                        .foregroundColor(.secondary)
-                    Text("还没有记录数据")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                    Text("记录每日吸烟量和购烟支出后，这里会显示趋势图表")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 80)
-            } else {
                 VStack(spacing: 20) {
                     Picker("时间范围", selection: Binding(
                         get: { vm.selectedWindow },
@@ -54,6 +38,9 @@ struct TrendsView: View {
                             }
                         }
                         .padding(.horizontal)
+                        Text("未记录的日期按 0 支计算")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal)
                         BarChartView(data: vm.cigaretteData.map { ($0.date, Double($0.count), Color.orange) })
                             .frame(height: 180)
                             .padding(.horizontal)
@@ -76,7 +63,6 @@ struct TrendsView: View {
                     .padding(.horizontal)
                 }
                 .padding(.vertical)
-            }
         }
         .navigationTitle("趋势")
         .onAppear { vm.load(logs: Array(logs), purchases: Array(purchases), profiles: Array(profiles)) }

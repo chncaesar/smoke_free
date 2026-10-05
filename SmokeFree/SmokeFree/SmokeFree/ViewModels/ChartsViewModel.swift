@@ -60,9 +60,8 @@ final class ChartsViewModel: ObservableObject {
         cigaretteData = dates.map { d in
             DayPoint(date: d, count: Int(logByDate[d] ?? 0))
         }
-        let recordedDays = cigaretteData.filter { logByDate[$0.date] != nil }
-        avgCigarettes = recordedDays.isEmpty ? 0 :
-            Double(recordedDays.map(\.count).reduce(0, +)) / Double(recordedDays.count)
+        // 无记录日按 0 支计算，平均值的分母为完整窗口天数。
+        avgCigarettes = Double(cigaretteData.map(\.count).reduce(0, +)) / Double(days)
 
         let cutoff = cal.date(byAdding: .day, value: -days, to: today) ?? today
         var spendByDate: [Date: Double] = [:]
